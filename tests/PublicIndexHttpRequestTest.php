@@ -137,11 +137,12 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.0', $data['stage']);
+        $this->assertSame('1.2', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertIsString($data['message']);
-        $this->assertStringContainsString('Phase 1', $data['message']);
-        $this->assertStringContainsString('Phase 2', $data['message']);
+        $this->assertStringContainsStringIgnoringCase('ping', $data['message']);
+        $this->assertStringContainsStringIgnoringCase('POST', $data['message']);
+        $this->assertProfileShape($data['profile']);
     }
 
     /**
@@ -153,9 +154,10 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.0', $data['stage']);
+        $this->assertSame('1.2', $data['stage']);
         $this->assertArrayHasKey('message', $data);
-        $this->assertStringContainsStringIgnoringCase('migrate', (string) $data['message']);
+        $this->assertStringContainsStringIgnoringCase('command', (string) $data['message']);
+        $this->assertProfileShape($data['profile']);
     }
 
     public function testResponseContentTypeIsJson(): void
@@ -172,6 +174,68 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertStringContainsString('application/json', strtolower($contentType));
     }
 
+    /**
+     * @throws \JsonException
+     */
+    public function testPostPingCommand(): void
+    {
+        $raw = $this->httpPostJson('/', ['command' => 'ping']);
+        $this->assertJson($raw);
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($data['ok']);
+        $this->assertTrue($data['data']['pong']);
+        $this->assertProfileShape($data['profile']);
+    }
+
+    /**
+     * @throws \JsonException
+     */
+    public function testPostHealthCommand(): void
+    {
+        $raw = $this->httpPostJson('/', ['command' => 'health']);
+        $this->assertJson($raw);
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($data['ok']);
+        $this->assertIsArray($data['data']['database']);
+        $this->assertArrayHasKey('configured', $data['data']['database']);
+        $this->assertArrayHasKey('reachable', $data['data']['database']);
+        $this->assertIsBool($data['data']['database']['configured']);
+        $this->assertIsBool($data['data']['database']['reachable']);
+        if ($data['data']['database']['configured'] === false) {
+            $this->assertFalse($data['data']['database']['reachable']);
+        }
+        $this->assertProfileShape($data['profile']);
+    }
+
+    /**
+     * @throws \JsonException
+     */
+    public function testPostUnknownCommand(): void
+    {
+        $raw = $this->httpPostJson('/', ['command' => 'not_implemented_yet']);
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertFalse($data['ok']);
+        $this->assertSame('unknown_command', $data['error']['code']);
+        $this->assertProfileShape($data['profile']);
+    }
+
+    /**
+     * @param mixed $profile
+     */
+    private function assertProfileShape(mixed $profile): void
+    {
+        $this->assertIsArray($profile);
+        $this->assertArrayHasKey('time_ms', $profile);
+        $this->assertIsNumeric($profile['time_ms']);
+        $this->assertGreaterThanOrEqual(0.0, (float) $profile['time_ms']);
+        $this->assertArrayHasKey('memory_bytes', $profile);
+        $this->assertIsInt($profile['memory_bytes']);
+        $this->assertGreaterThanOrEqual(0, $profile['memory_bytes']);
+        $this->assertArrayHasKey('memory_peak_bytes', $profile);
+        $this->assertIsInt($profile['memory_peak_bytes']);
+        $this->assertGreaterThanOrEqual($profile['memory_bytes'], $profile['memory_peak_bytes']);
+    }
+
     private function httpGet(string $path): string
     {
         $url = self::$baseUrl . $path;
@@ -183,6 +247,27 @@ final class PublicIndexHttpRequestTest extends TestCase
         ]);
         $raw = file_get_contents($url, false, $ctx);
         $this->assertNotFalse($raw, 'HTTP GET failed: ' . $url);
+
+        return $raw;
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     */
+    private function httpPostJson(string $path, array $body): string
+    {
+        $url = self::$baseUrl . $path;
+        $ctx = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/json\r\n",
+                'content' => json_encode($body, JSON_THROW_ON_ERROR),
+                'timeout' => 5.0,
+                'ignore_errors' => true,
+            ],
+        ]);
+        $raw = file_get_contents($url, false, $ctx);
+        $this->assertNotFalse($raw, 'HTTP POST failed: ' . $url);
 
         return $raw;
     }

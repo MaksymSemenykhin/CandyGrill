@@ -9,5 +9,6 @@ namespace Game;
  */
 final class Bootstrap
 {
-    public const PHASE = '1.0';
+    /** 1.2 = command API + optional PDO; `health` reports DB configuration and reachability. */
+    public const PHASE = '1.2';
 }

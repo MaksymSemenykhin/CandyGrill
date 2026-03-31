@@ -21,6 +21,22 @@ final readonly class DatabaseConfig
     ) {
     }
 
+    /**
+     * True when all required DB_* vars are set and non-empty (password may be empty).
+     * Does not throw; use before optional PDO usage or {@see fromEnvironment()}.
+     */
+    public static function isComplete(): bool
+    {
+        foreach (['DB_HOST', 'DB_DATABASE', 'DB_USERNAME'] as $key) {
+            $v = self::optional($key);
+            if ($v === null || $v === '') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public static function fromEnvironment(): self
     {
         $host = self::requireNonEmpty('DB_HOST');

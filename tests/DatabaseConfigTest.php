@@ -125,4 +125,32 @@ final class DatabaseConfigTest extends TestCase
         $this->expectExceptionMessage('DB_HOST');
         DatabaseConfig::fromEnvironment();
     }
+
+    public function testIsCompleteWhenAllRequiredPresent(): void
+    {
+        $this->setEnv('DB_HOST', 'h');
+        $this->setEnv('DB_DATABASE', 'd');
+        $this->setEnv('DB_USERNAME', 'u');
+        $this->setEnv('DB_PASSWORD', '');
+
+        $this->assertTrue(DatabaseConfig::isComplete());
+    }
+
+    public function testIsCompleteFalseWhenHostMissing(): void
+    {
+        $this->setEnv('DB_HOST', null);
+        $this->setEnv('DB_DATABASE', 'd');
+        $this->setEnv('DB_USERNAME', 'u');
+
+        $this->assertFalse(DatabaseConfig::isComplete());
+    }
+
+    public function testIsCompleteFalseWhenHostEmpty(): void
+    {
+        $this->setEnv('DB_HOST', '');
+        $this->setEnv('DB_DATABASE', 'd');
+        $this->setEnv('DB_USERNAME', 'u');
+
+        $this->assertFalse(DatabaseConfig::isComplete());
+    }
 }

@@ -61,7 +61,7 @@ Project lives on a Windows drive (e.g. `H:\CandyGrill` → `/mnt/h/CandyGrill` i
    * Git Bash / WSL / Linux: `chmod +x sail` then `./sail build` and `./sail up -d`
    * Windows CMD: `sail.bat build` and `sail.bat up -d`
    * Or: `docker compose build` / `docker compose up -d`
-3. Open `http://127.0.0.1:8080/` — you should see a short JSON placeholder from phase 0.1.
+3. Open `http://127.0.0.1:8080/` — JSON от командного API: `ok`, `stage`, `message` и объект `profile` (время и память).
 4. Inside the app container, `composer install` runs on first start if `vendor/` is missing.
 
 ### Verify phase 0.1 (automated)
@@ -106,9 +106,41 @@ Second migrate run is a no-op when already up to date.
 
 **Schema (agreed design):** `docs/database-schema.md` — integer PKs, append-only `combat_moves`, Memcached for sessions later.
 
-Phase 2 — HTTP API shell
--------------------------
-Replace `public/index.php` with the real JSON command router.
+Phase 1.1+ — JSON command API (incremental)
+--------------------------------------------
+Built in small steps so you can review each slice.
+
+**Текущий маркер:** `Bootstrap::PHASE` = **1.2**.
+
+### Part 1 (база API)
+
+* **`Game\Api\Kernel`** + **`Game\Http\IncomingRequest`**.
+* **GET** `/` или `/index.php` — JSON: `ok`, `stage`, `message`, **`profile`** (`time_ms`, `memory_bytes`, `memory_peak_bytes`).
+* **POST** `/`, `application/json`, поле **`command`** (`a-z`, `0-9`, `_`).
+* Команда проверяется **по файлу** в `src/Api/Handler/{Studly}Handler.php` (`ping` → `PingHandler`), класс реализует `CommandHandler`.
+* Неизвестная команда → `400`, `unknown_command`; у ответов из `Kernel` есть **`profile`**.
+
+### Part 2 (done в **1.2**)
+
+* **`DatabaseConfig::isComplete()`** — есть ли `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` (не пустые); пароль может быть пустым. Без исключений.
+* **`HealthHandler`**, команда **`health`:** `data.database.configured`, `data.database.reachable` (`SELECT 1` через PDO только если конфиг полный; при ошибке подключения `reachable` = `false`).
+
+**curl** (порт из `.env`, чаще **8080**):
+
+```bash
+curl -sS "http://127.0.0.1:8080/"
+curl -sS -X POST "http://127.0.0.1:8080/" \
+  -H "Content-Type: application/json" \
+  -d '{"command":"ping"}'
+curl -sS -X POST "http://127.0.0.1:8080/" \
+  -H "Content-Type: application/json" \
+  -d '{"command":"health"}'
+```
+
+### Дальше по плану
+
+* **Part 3:** sessions — `SESSION_DRIVER` memory / Memcached, выдача токена и разбор запроса.
+* **Part 4:** `register`, `login`, `me` (+ репозитории).
 
 Later phases
 ------------
