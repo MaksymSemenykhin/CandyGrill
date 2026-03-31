@@ -69,7 +69,7 @@ After `composer install` on the host (or inside the app container):
 
     composer test
 
-Runs PHPUnit: `Phase01DockerStackTest` (layout/autoload), `PublicIndexHttpRequestTest` (real HTTP GET to `/` and `/index.php`, plus `Content-Type`).
+Runs PHPUnit: `ProjectLayoutTest` (layout, Phinx, Composer scripts), `DatabaseConfigTest`, `DatabaseMigrationFileTest`, `PhpdotenvLoadTest`, `PublicIndexHttpRequestTest` (HTTP GET `/` and `/index.php`, `Content-Type`), optional `PdoMysqlIntegrationTest` with `GAME_INTEGRATION_DB=1`.
 
 HTTP tests start an ephemeral **`php -S`** server unless **`TEST_BASE_URL`** is set (e.g. `./sail up -d` then `TEST_BASE_URL=http://127.0.0.1:8080 composer test`).
 
@@ -86,11 +86,25 @@ Containers must be running (`./sail up -d`) before `exec`.
 
 MySQL data persists in the `candygrill-mysql` volume. Memcached is optional for future phases; the PHP image already has the `memcached` extension for parity with production-style stacks.
 
-Phase 1 — next
---------------
-Configuration, `.env` loading in PHP, PDO, database schema, migrations (see plan).
+Phase 1 — configuration + MySQL schema
+---------------------------------------
+* **Dotenv:** `vlucas/phpdotenv` — loaded from project root in `phinx.php`, `bin/migrate.php`, and anywhere else via `Dotenv::createImmutable($root)->safeLoad()`.
+* **PDO:** `Game\Config\DatabaseConfig::fromEnvironment()` + `Game\Database\PdoFactory` (vars `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`). Reads `$_ENV` with `getenv()` fallback.
+* **Migrations:** `robmorgan/phinx` — config `phinx.php`, one class per table under `database/migrations/`; DDL is inline in each file (`$this->execute(<<<'SQL' … SQL)`). Phinx tracks applied versions in table **`phinxlog`**. If you used the old in-house migrator (`schema_migrations`), reset the MySQL volume or drop those tables/rows before switching.
 
-**Schema (agreed design):** high-load-oriented layout, integer PKs (`BIGINT UNSIGNED` auto-increment), append-only combat moves, Memcached for access tokens (e.g. 24h TTL, renewed on login) — see `docs/database-schema.md`.
+With stack up (`./sail up -d`), from the project root **inside the app container**:
+
+```bash
+./sail composer migrate
+# same as: ./sail php bin/migrate.php  →  vendor/bin/phinx migrate
+vendor/bin/phinx status   # optional
+```
+
+Second migrate run is a no-op when already up to date.
+
+**Integration test (optional):** `PdoMysqlIntegrationTest` runs when `GAME_INTEGRATION_DB=1`. Use the same `DB_HOST` as the PHP process: e.g. `./sail exec app env GAME_INTEGRATION_DB=1 composer test` (host `DB_HOST=mysql` in `.env`). From the host OS you would need `DB_HOST=127.0.0.1` and a forwarded MySQL port. Default `composer test` in CI skips this test.
+
+**Schema (agreed design):** `docs/database-schema.md` — integer PKs, append-only `combat_moves`, Memcached for sessions later.
 
 Phase 2 — HTTP API shell
 -------------------------

@@ -1,7 +1,10 @@
 parameters:
     level: 6
     paths:
+        - bin
+        - phinx.php
         - src
         - public
         - tests
+        - database/migrations
     treatPhpDocTypesAsCertain: false

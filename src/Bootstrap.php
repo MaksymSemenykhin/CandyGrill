@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace Game;
 
 /**
- * Minimal class so PSR-4 autoload can be verified in phase 0.1 tests.
+ * Release phase marker for smoke tests and placeholder responses.
  */
 final class Bootstrap
 {
-    public const PHASE = '0.1';
+    public const PHASE = '1.0';
 }

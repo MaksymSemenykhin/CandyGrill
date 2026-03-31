@@ -137,8 +137,11 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('0.1', $data['stage']);
+        $this->assertSame('1.0', $data['stage']);
         $this->assertArrayHasKey('message', $data);
+        $this->assertIsString($data['message']);
+        $this->assertStringContainsString('Phase 1', $data['message']);
+        $this->assertStringContainsString('Phase 2', $data['message']);
     }
 
     /**
@@ -150,7 +153,9 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('0.1', $data['stage']);
+        $this->assertSame('1.0', $data['stage']);
+        $this->assertArrayHasKey('message', $data);
+        $this->assertStringContainsStringIgnoringCase('migrate', (string) $data['message']);
     }
 
     public function testResponseContentTypeIsJson(): void
