@@ -1,6 +1,10 @@
 CandyGrill — phased build
 =========================
 
+**Repository:** https://github.com/MaksymSemenykhin/CandyGrill  
+
+Clone (SSH): `git@github.com:MaksymSemenykhin/CandyGrill.git`
+
 Phase 0 — repository
 --------------------
 * PSR-4: `Game\` → `src/`, `Game\Tests\` → `tests/`.
