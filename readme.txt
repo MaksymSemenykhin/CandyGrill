@@ -90,6 +90,8 @@ Phase 1 — next
 --------------
 Configuration, `.env` loading in PHP, PDO, database schema, migrations (see plan).
 
+**Schema (agreed design):** high-load-oriented layout, UUID v7 as `BINARY(16)` for users/characters/combats, append-only combat moves, Memcached for access tokens (e.g. 24h TTL, renewed on login) — see `docs/database-schema.md`.
+
 Phase 2 — HTTP API shell
 -------------------------
 Replace `public/index.php` with the real JSON command router.
