@@ -23,7 +23,8 @@ jobs:
     name: PHP ${{ matrix.php }}
 
     steps:
-      - uses: actions/checkout@v4
+      # v6 / v5 use Node.js 24; v4 actions used Node 20 (deprecated on GitHub-hosted runners).
+      - uses: actions/checkout@v6
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -34,7 +35,7 @@ jobs:
           coverage: none
 
       - name: Composer cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.composer/cache/files
           key: composer-${{ matrix.php }}-${{ hashFiles('**/composer.lock') }}
