@@ -1,5 +1,5 @@
 # Run tests, PHPStan, and PHP-CS-Fixer on push/PR.
-# Dev dependencies in composer.lock require PHP >= 8.2 (Symfony 7). Runtime in composer.json stays ^8.1.
+# Dev dependencies in composer.lock require PHP >= 8.2. Runtime in composer.json stays ^8.1.
 
 name: CI
 
@@ -38,9 +38,6 @@ jobs:
         with:
           path: ~/.composer/cache/files
           key: composer-${{ matrix.php }}-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            composer-${{ matrix.php }}-
-
       - name: Install dependencies
         run: composer install --no-interaction --no-progress --prefer-dist
 
