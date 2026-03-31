@@ -6,6 +6,27 @@ Phase 0 — repository
 * PSR-4: `Game\` → `src/`, `Game\Tests\` → `tests/`.
 * `composer install`
 
+Code quality (static analysis + style)
+--------------------------------------
+* **PHPStan** (`phpstan.neon.dist`, level 6): `composer run stan`
+* **PHP-CS-Fixer** (PSR-12 + `declare_strict_types`): `composer run cs-check` (dry run) / `composer run cs-fix`
+
+Run all checks: `composer run check` (style, PHPStan, PHPUnit).
+
+This project targets PHP 8.1+. **Laravel Pint** is not used here (it commonly requires PHP 8.2+); PHP-CS-Fixer is the supported formatter.
+
+**Note:** current **dev** dependencies (e.g. Symfony components used by PHP-CS-Fixer) require **PHP 8.2+** to install from `composer.lock`. CI runs on **8.2 and 8.3** (see `.github/workflows/ci.yml`). Running `composer install` on PHP 8.1 may fail until dev packages are adjusted or you use `--ignore-platform-reqs` (not recommended).
+
+CI / GitHub Actions
+---------------------
+On push to `master` / `main` and on pull requests, **GitHub Actions** runs:
+
+1. `composer run cs-check` — PHP-CS-Fixer dry run  
+2. `composer run stan` — PHPStan  
+3. `composer run test` — PHPUnit  
+
+Workflow file: `.github/workflows/ci.yml`.
+
 Phase 0.1 — Composer + Docker (“Sail-like”)
 --------------------------------------------
 This is **not** the official `laravel/sail` package (that requires Laravel). Same idea: **PHP 8.3 + MySQL 8 + Memcached** in Compose, plus small **`sail` / `sail.bat`** wrappers around `docker compose`.
