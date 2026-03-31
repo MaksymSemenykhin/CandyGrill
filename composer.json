@@ -1,0 +1,23 @@
+{
+    "name": "candygrill/game-server",
+    "description": "CandyGrill test assignment — game API server",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.1"
+    },
+    "require-dev": {},
+    "autoload": {
+        "psr-4": {
+            "Game\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Game\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
