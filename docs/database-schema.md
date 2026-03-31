@@ -1,30 +1,30 @@
 # Database and session design (high-load oriented)
 
-This document reflects agreed decisions: UUID primary keys for identity/characters, append-only combat log, **Memcached** for access tokens (no MySQL `MEMORY` engine for sessions).
+This document reflects agreed decisions: **integer primary keys** (`BIGINT UNSIGNED AUTO_INCREMENT`), append-only combat log, **Memcached** for access tokens (no MySQL `MEMORY` engine for sessions).
 
 ## Principles
 
 - **MySQL (InnoDB)** is the source of truth for durable game data.
 - **Memcached** stores short-lived **opaque access tokens** mapped to a user id (TTL-based expiry).
 - **No sliding TTL on every HTTP request** — session lifetime is renewed on **login** (new token + fresh TTL, e.g. **24 hours**). Fewer cache writes, simpler semantics.
-- Prefer **time-ordered UUIDs (v7)** over random UUID v4 for primary keys to reduce B-tree fragmentation on insert.
+- **Simple IDs:** all entity primary keys are **unsigned integers** in the database and API (JSON numbers). No UUID / `BINARY(16)` conversion layer.
 
 ## Identifiers
 
-| Entity | PK type | Storage in MySQL | External / JSON |
-|--------|---------|------------------|-----------------|
-| `users.id` | UUID v7 | `BINARY(16)` | Canonical string (hex with hyphens) or base32 if you shorten URLs |
-| `characters.id` | UUID v7 | `BINARY(16)` | Same |
-| `combats.id` | UUID v7 (recommended) | `BINARY(16)` | Same — safe to expose in API |
-| `combat_moves.id` | `BIGINT` auto-increment (optional) | `BIGINT` | Usually internal only |
+| Entity | PK type | Notes |
+|--------|---------|--------|
+| `users.id` | `BIGINT UNSIGNED` AI | |
+| `characters.id` | `BIGINT UNSIGNED` AI | |
+| `combats.id` | `BIGINT UNSIGNED` AI | |
+| `combat_moves.id` | `BIGINT UNSIGNED` AI | Append-friendly clustered inserts |
 
-Using `BINARY(16)` avoids `CHAR(36)` overhead. Application layer converts to/from string at API boundaries.
+If you ever need strictly smaller row width and are sure volumes stay modest, `INT UNSIGNED` is possible; **`BIGINT UNSIGNED`** is the default recommendation for headroom and consistency.
 
 ## Tables (logical)
 
 ### `users`
 
-- `id` `BINARY(16)` PK  
+- `id` `BIGINT UNSIGNED` PK, auto-increment  
 - `email` (or `login`) `VARCHAR` **UNIQUE**  
 - `password_hash` `VARCHAR`  
 - `created_at`, `updated_at`  
@@ -32,30 +32,32 @@ Using `BINARY(16)` avoids `CHAR(36)` overhead. Application layer converts to/fro
 
 ### `characters`
 
-- `id` `BINARY(16)` PK  
-- `user_id` `BINARY(16)` **UNIQUE** FK → `users.id` (one character per user unless requirements change)  
+- `id` `BIGINT UNSIGNED` PK, auto-increment  
+- `user_id` `BIGINT UNSIGNED` **UNIQUE** FK → `users.id` (one character per user unless requirements change)  
 - Game columns per assignment (name, level, stats, …)  
 - `version` `INT NOT NULL DEFAULT 0` — optimistic locking on updates after combat  
 - `updated_at`  
 
 ### `combats`
 
-- `id` `BINARY(16)` PK  
-- `participant_a_id`, `participant_b_id` `BINARY(16)` FK → `characters.id`  
+- `id` `BIGINT UNSIGNED` PK, auto-increment  
+- `participant_a_id`, `participant_b_id` `BIGINT UNSIGNED` FK → `characters.id`  
 - `status` — e.g. `pending` / `active` / `finished` / `cancelled`  
-- `winner_character_id` `BINARY(16)` NULL  
+- `winner_character_id` `BIGINT UNSIGNED` NULL  
 - `started_at`, `finished_at` (nullable)  
 - Optional: small `state` JSON if you need unstructured snapshot; keep indexed columns normalized for hot queries  
 
 **Indexes (examples):**  
 `(participant_a_id, status)`, `(participant_b_id, status)` for “find my active combat” (or complement with Memcached hot key, see below).
 
+**Note:** numeric ids are **enumerable**; do not rely on them as secrets—authorization always via token/session.
+
 ### `combat_moves` (append-only)
 
-- `id` `BIGINT` PK auto-increment  
-- `combat_id` `BINARY(16)` NOT NULL FK → `combats.id`  
+- `id` `BIGINT UNSIGNED` PK, auto-increment  
+- `combat_id` `BIGINT UNSIGNED` NOT NULL FK → `combats.id`  
 - `turn_number` `INT` NOT NULL  
-- `actor_character_id` `BINARY(16)` NOT NULL  
+- `actor_character_id` `BIGINT UNSIGNED` NOT NULL  
 - `payload` `JSON`  
 - `created_at`  
 
@@ -65,7 +67,7 @@ Reads: `WHERE combat_id = ? ORDER BY turn_number` with pagination if history gro
 ## Sessions / access tokens (Memcached)
 
 - **Not** stored in MySQL `MEMORY` tables — use Memcached (already in Compose) or add Redis later if you need richer TTL/structures.
-- On **login**: generate opaque token (random bytes), `KEY =` prefix + hash of token (never store raw token as key if you log keys), `VALUE =` compact blob or JSON with `user_id` (binary UUID or string), **`TTL = 86400`** (24h example).
+- On **login**: generate opaque token (random bytes), `KEY =` prefix + hash of token (never store raw token as key if you log keys), `VALUE =` compact blob or JSON with **`user_id`** (numeric id), **`TTL = 86400`** (24h example).
 - **Renewal:** new login issues a new token and **re-`SET`s** with full TTL; old tokens expire naturally unless you explicitly delete keys (e.g. single-session policy).
 - **Multi-device:** define policy — allow multiple tokens per user (multiple keys) or maintain `user_id → current token id` and invalidate previous keys on login.
 
@@ -92,5 +94,5 @@ erDiagram
 ## Evolution
 
 - **Redis** — consider if you need frequent `EXPIRE` updates, refresh-token rotation tables in memory, or sorted sets for matchmaking at scale.  
-- **Sharding** — UUID v7 keeps IDs globally unique; shard key can be derived later (e.g. hash of `user_id`).  
+- **Sharding / global IDs** — if you later split MySQL, introduce application-level ids (snowflake, ULID) or a central id service; single-instance `AUTO_INCREMENT` is not unique across shards.  
 - **Archival** — old `combat_moves` partitions by month when volume grows.
