@@ -1,0 +1,47 @@
+# Sail-like stack without Laravel: PHP + MySQL 8 + Memcached.
+# Usage: cp .env.example .env && ./sail up -d  (or sail.bat on Windows CMD)
+
+name: candygrill
+
+services:
+  app:
+    build:
+      context: ./docker/8.3
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    ports:
+      - "${APP_PORT:-8080}:8080"
+    volumes:
+      - .:/var/www/html
+    depends_on:
+      mysql:
+        condition: service_healthy
+      memcached:
+        condition: service_started
+    working_dir: /var/www/html
+
+  mysql:
+    image: mysql:8.0
+    command: --default-authentication-plugin=mysql_native_password
+    ports:
+      - "${FORWARD_DB_PORT:-3306}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: "${DB_PASSWORD:-password}"
+      MYSQL_DATABASE: "${DB_DATABASE:-candygrill}"
+    volumes:
+      - candygrill-mysql:/var/lib/mysql
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h 127.0.0.1 -p"$$MYSQL_ROOT_PASSWORD" || exit 1']
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 15s
+
+  memcached:
+    image: memcached:alpine
+    ports:
+      - "${FORWARD_MEMCACHED_PORT:-11211}:11211"
+
+volumes:
+  candygrill-mysql:

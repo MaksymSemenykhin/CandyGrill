@@ -4,9 +4,16 @@
     "type": "project",
     "license": "proprietary",
     "require": {
-        "php": "^8.1"
+        "php": "^8.1",
+        "ext-json": "*"
     },
-    "require-dev": {},
+    "require-dev": {
+        "phpunit/phpunit": "^10.5"
+    },
+    "suggest": {
+        "ext-pdo": "Required from phase 1 onward (MySQL)",
+        "ext-memcached": "Optional; container image includes it for later session cache"
+    },
     "autoload": {
         "psr-4": {
             "Game\\": "src/"
@@ -19,5 +26,8 @@
     },
     "config": {
         "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit"
     }
 }
