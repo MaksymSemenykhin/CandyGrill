@@ -5,6 +5,8 @@ CandyGrill — phased build
 
 Clone (SSH): `git@github.com:MaksymSemenykhin/CandyGrill.git`
 
+**Официальное ТЗ задания (employer):** `docs/assignment-original-spec.md`. Сверка реализации с ним: `docs/technical-spec.md`.
+
 Phase 0 — repository
 --------------------
 * PSR-4: `Game\` → `src/`, `Game\Tests\` → `tests/`.
@@ -62,7 +64,7 @@ Project lives on a Windows drive (e.g. `H:\CandyGrill` → `/mnt/h/CandyGrill` i
    * Windows CMD: `sail.bat build` and `sail.bat up -d`
    * Or: `docker compose build` / `docker compose up -d`
 3. Open `http://127.0.0.1:8080/` — JSON от командного API: `ok`, `stage`, `message` и объект `profile` (время и память).
-4. Inside the app container, `composer install` runs on first start if `vendor/` is missing.
+4. Inside the app container, `composer install` runs on first start if `vendor/` is missing, then **`php bin/migrate.php`** runs on **every** container start so the DB schema stays in sync (rebuild image or `docker compose build app` after changing `docker-entrypoint.sh`).
 
 ### Verify phase 0.1 (automated)
 After `composer install` on the host (or inside the app container):
@@ -102,6 +104,8 @@ vendor/bin/phinx status   # optional
 
 Second migrate run is a no-op when already up to date.
 
+**`database_error` (503):** PDO failure (often schema out of sync: run **`./sail composer migrate`**). With **`DEBUG=true`**, the JSON may include **`error.detail`**; the PDO message is also logged as **`Game API PDO:`**.
+
 **Integration test (optional):** `PdoMysqlIntegrationTest` runs when `GAME_INTEGRATION_DB=1`. Use the same `DB_HOST` as the PHP process: e.g. `./sail exec app env GAME_INTEGRATION_DB=1 composer test` (host `DB_HOST=mysql` in `.env`). From the host OS you would need `DB_HOST=127.0.0.1` and a forwarded MySQL port. Default `composer test` in CI skips this test.
 
 **Schema (agreed design):** `docs/database-schema.md` — integer PKs, append-only `combat_moves`, Memcached for sessions later.
@@ -110,7 +114,7 @@ Phase 1.1+ — JSON command API (incremental)
 --------------------------------------------
 Built in small steps so you can review each slice.
 
-**Текущий маркер:** `Bootstrap::PHASE` = **1.3**.
+**Текущий маркер:** `Bootstrap::PHASE` = **1.4** (Part 4; дальше `login` / `me`).
 
 ### Part 1 (база API)
 
@@ -152,10 +156,21 @@ curl -sS -X POST "http://127.0.0.1:8080/" \
   -d '{"command":"session_status"}'
 ```
 
+### Part 4 (в процессе)
+
+* **Официальное ТЗ:** **`docs/assignment-original-spec.md`**, сверка **`docs/technical-spec.md`**.
+* **Дальше:** `login`, `me`.
+
+### OpenAPI / Swagger UI
+
+* Спека: **`public/openapi.yaml`**. UI: **`/api-docs/index.html`** (подгружает **`/openapi.yaml`**).
+
+**WSL:** каталог в Linux-пути (`cd /mnt/h/CandyGrill` и т.д.), **`./sail up -d`**, в браузере **`http://127.0.0.1:<APP_PORT>/api-docs/index.html`**. Без Docker: `php -S 0.0.0.0:8080 -t public` из корня репозитория.
+
 ### Дальше по плану
 
-* **Part 4:** `register`, `login`, `me` (+ репозитории; `login` будет выдавать токен вместо `session_issue`).
+* Part 4 — завершить `login`, `me` (токен после логина вместо dev-`session_issue` там, где нужно).
 
 Later phases
 ------------
-Domain (combat), repositories, sessions, full API, validation/OpenAPI, health checks, etc.
+Domain (combat), repositories, расширение OpenAPI, health checks, etc.

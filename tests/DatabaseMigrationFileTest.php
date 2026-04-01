@@ -15,7 +15,7 @@ final class DatabaseMigrationFileTest extends TestCase
     {
         $dir = dirname(__DIR__) . '/database/migrations';
         $expect = [
-            '20260331120101_create_users.php' => ['CREATE TABLE users', 'uq_users_email'],
+            '20260331120101_create_users.php' => ['CREATE TABLE users', "ENUM('active', 'inactive')"],
             '20260331120102_create_characters.php' => ['CREATE TABLE characters', 'fk_characters_user'],
             '20260331120103_create_combats.php' => ['CREATE TABLE combats', 'idx_combats_participant_a_status'],
             '20260331120104_create_combat_moves.php' => ['CREATE TABLE combat_moves', 'uq_combat_moves_turn'],
@@ -31,5 +31,17 @@ final class DatabaseMigrationFileTest extends TestCase
                 $this->assertStringContainsString($needle, $php, $file);
             }
         }
+
+        $tzPath = $dir . '/20260401120001_tz_registration_schema.php';
+        $this->assertFileExists($tzPath);
+        $tz = (string) file_get_contents($tzPath);
+        $this->assertStringContainsString('ALTER TABLE characters', $tz);
+        $this->assertStringContainsString('skill_1', $tz);
+
+        $pubPath = $dir . '/20260404180000_add_users_public_id.php';
+        $this->assertFileExists($pubPath);
+        $pub = (string) file_get_contents($pubPath);
+        $this->assertStringContainsString('public_id', $pub);
+        $this->assertStringContainsString('uq_users_public_id', $pub);
     }
 }

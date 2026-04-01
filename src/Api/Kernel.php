@@ -6,23 +6,22 @@ namespace Game\Api;
 
 use Dotenv\Dotenv;
 use Game\Api\Handler\CommandHandler;
+use Game\Api\Handler\RequiresDatabase;
+use Game\Database\DatabaseConnection;
+use Game\Database\PdoFactory;
+use Game\Api\Validation\ApiValidation;
 use Game\Api\Validation\CommandBody;
 use Game\Bootstrap;
 use Game\Http\ApiContext;
 use Game\Http\IncomingRequest;
 use Game\Session\SessionService;
-use Symfony\Component\Validator\ConstraintViolationInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
-use Symfony\Component\Validator\Validation;
 
 /**
- * JSON API — POST `command`: файл `Api/Handler/{Studly}Handler.php` + класс реализует {@see CommandHandler}.
+ * POST `command`: JSON или `x-www-form-urlencoded` — `Api/Handler/{Studly}Handler.php` + {@see CommandHandler}.
  */
 final class Kernel
 {
     private ?int $requestStartedNs = null;
-
-    private static ?ValidatorInterface $validator = null;
 
     public static function boot(string $projectRoot): self
     {
@@ -40,7 +39,7 @@ final class Kernel
             $this->sendJson(200, [
                 'ok' => true,
                 'stage' => Bootstrap::PHASE,
-                'message' => 'Phase 1.3: POST `command` — `ping`, `health`, `session_issue`, `session_status` (Bearer). Next: register/login/me.',
+                'message' => 'Phase 1.4: POST JSON `command` — `register` (character `name` → `player_id` UUID), `ping`, `health`, session_*. Next: login / me.',
             ]);
 
             return;
@@ -49,7 +48,7 @@ final class Kernel
         if ($req->method !== 'POST') {
             $this->sendJson(405, [
                 'ok' => false,
-                'error' => ['code' => 'method_not_allowed', 'message' => 'Use POST with application/json.'],
+                'error' => ['code' => 'method_not_allowed', 'message' => 'Use POST with application/json or application/x-www-form-urlencoded.'],
             ]);
 
             return;
@@ -57,11 +56,11 @@ final class Kernel
 
         try {
             /** @var array<string, mixed> $body */
-            $body = $req->rawBody === '' ? [] : \json_decode($req->rawBody, true, 512, JSON_THROW_ON_ERROR);
+            $body = RequestBodyDecoder::decode($req);
         } catch (\JsonException) {
             $this->sendJson(400, [
                 'ok' => false,
-                'error' => ['code' => 'invalid_json', 'message' => 'Body must be valid JSON.'],
+                'error' => ['code' => 'invalid_json', 'message' => 'Body must be valid JSON or form-urlencoded fields.'],
             ]);
 
             return;
@@ -77,11 +76,11 @@ final class Kernel
         }
 
         $commandBody = new CommandBody(command: $body['command']);
-        $violations = self::validator()->validate($commandBody);
+        $violations = ApiValidation::validator()->validate($commandBody);
         if (\count($violations) > 0) {
             $this->sendJson(400, [
                 'ok' => false,
-                'error' => $this->validationErrorFromViolation($violations[0]),
+                'error' => ApiValidation::errorPayloadFromViolation($violations[0]),
             ]);
 
             return;
@@ -116,11 +115,43 @@ final class Kernel
         $apiContext = new ApiContext(request: $req, body: $body, session: $session);
 
         try {
-            $data = $handler->handle($apiContext);
+            if ($handler instanceof RequiresDatabase) {
+                $pdo = PdoFactory::tryCreateFromEnvironment();
+                if ($pdo === null) {
+                    $this->sendJson(503, [
+                        'ok' => false,
+                        'error' => [
+                            'code' => 'database_not_configured',
+                            'message' => 'Database is not configured.',
+                        ],
+                    ]);
+
+                    return;
+                }
+                $data = $handler->handle($apiContext, new DatabaseConnection($pdo));
+            } else {
+                /** @var CommandHandler $handler */
+                $data = $handler->handle($apiContext);
+            }
         } catch (ApiHttpException $e) {
             $this->sendJson($e->httpStatus, [
                 'ok' => false,
                 'error' => ['code' => $e->errorCode, 'message' => $e->getMessage()],
+            ]);
+
+            return;
+        } catch (\PDOException $e) {
+            \error_log('Game API PDO: ' . $e->getMessage());
+            $error = [
+                'code' => 'database_error',
+                'message' => 'Database query failed. Apply Phinx migrations so `users` (`public_id`, `status`, …) and `characters` (fights, skill_1..3, etc.) match the code — e.g. `./sail composer migrate` from the project root in WSL.',
+            ];
+            if (self::debugResponsesEnabled()) {
+                $error['detail'] = $e->getMessage();
+            }
+            $this->sendJson(503, [
+                'ok' => false,
+                'error' => $error,
             ]);
 
             return;
@@ -148,7 +179,10 @@ final class Kernel
         echo \json_encode($payload, JSON_THROW_ON_ERROR);
     }
 
-    private function handlerForCommand(string $command): ?CommandHandler
+    /**
+     * @return CommandHandler|RequiresDatabase|null
+     */
+    private function handlerForCommand(string $command): CommandHandler|RequiresDatabase|null
     {
         $shortName = str_replace(' ', '', ucwords(str_replace('_', ' ', $command))) . 'Handler';
         $dir = __DIR__ . DIRECTORY_SEPARATOR . 'Handler';
@@ -163,31 +197,22 @@ final class Kernel
             return null;
         }
 
-        if (!is_subclass_of($class, CommandHandler::class)) {
+        if (!is_subclass_of($class, CommandHandler::class)
+            && !is_subclass_of($class, RequiresDatabase::class)) {
             return null;
         }
 
-        /** @var CommandHandler */
         return new $class();
     }
 
-    private static function validator(): ValidatorInterface
-    {
-        return self::$validator ??= Validation::createValidatorBuilder()
-            ->enableAttributeMapping()
-            ->getValidator();
-    }
-
     /**
-     * @return array{code: string, message: string}
+     * When `DEBUG=true` in `.env`, `database_error` includes `error.detail` with the PDO message.
      */
-    private function validationErrorFromViolation(ConstraintViolationInterface $violation): array
+    private static function debugResponsesEnabled(): bool
     {
-        $payload = $violation->getConstraint()?->payload ?? null;
-        $code = \is_array($payload) && isset($payload['api_error']) && \is_string($payload['api_error'])
-            ? $payload['api_error']
-            : 'unknown_command';
+        $v = $_ENV['DEBUG'] ?? $_SERVER['DEBUG'] ?? \getenv('DEBUG');
 
-        return ['code' => $code, 'message' => (string) $violation->getMessage()];
+        return \is_string($v) && \filter_var($v, FILTER_VALIDATE_BOOLEAN);
     }
+
 }

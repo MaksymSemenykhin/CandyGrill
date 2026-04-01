@@ -9,6 +9,6 @@ namespace Game;
  */
 final class Bootstrap
 {
-    /** 1.3 = Part 3 sessions: SESSION_DRIVER memory|memcached, Bearer token, session_issue / session_status. */
-    public const PHASE = '1.3';
+    /** 1.4 = Part 4 start: `register` (login/me next). */
+    public const PHASE = '1.4';
 }

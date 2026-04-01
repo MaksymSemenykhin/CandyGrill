@@ -1,0 +1,148 @@
+openapi: 3.0.3
+info:
+  title: CandyGrill
+  version: 1.4.7
+
+servers:
+  - url: http://127.0.0.1:8080
+    description: Port from `.env` (`APP_PORT`)
+
+tags:
+  - name: register
+    description: Character registration
+
+paths:
+  /:
+    post:
+      tags: [register]
+      summary: Register a character
+      operationId: registerCharacter
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequestJson'
+            example:
+              command: register
+              name: MyHero
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RegisterRequestForm'
+            example:
+              command: register
+              name: MyHero
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegisterOk'
+              example:
+                ok: true
+                data:
+                  player_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+                profile:
+                  time_ms: 2.5
+                  memory_bytes: 2097152
+                  memory_peak_bytes: 2097152
+        '400':
+          description: Validation failed or malformed body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '405':
+          description: Method not allowed (use POST)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+        '503':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+
+components:
+  schemas:
+    RegisterRequestJson:
+      type: object
+      required: [command, name]
+      additionalProperties: false
+      properties:
+        command:
+          type: string
+          enum: [register]
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Character name
+
+    RegisterRequestForm:
+      type: object
+      required: [command, name]
+      additionalProperties: false
+      properties:
+        command:
+          type: string
+          enum: [register]
+        name:
+          type: string
+          minLength: 1
+          maxLength: 64
+          description: Character name
+
+    RegisterOk:
+      type: object
+      required: [ok, data, profile]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        data:
+          type: object
+          required: [player_id]
+          additionalProperties: false
+          properties:
+            player_id:
+              type: string
+              format: uuid
+        profile:
+          $ref: '#/components/schemas/Profile'
+
+    Profile:
+      type: object
+      required: [time_ms, memory_bytes, memory_peak_bytes]
+      properties:
+        time_ms:
+          type: number
+          format: float
+        memory_bytes:
+          type: integer
+        memory_peak_bytes:
+          type: integer
+
+    ErrorBody:
+      type: object
+      required: [ok, error]
+      properties:
+        ok:
+          type: boolean
+          example: false
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              description: |
+                Examples: `invalid_name`, `invalid_request`, `invalid_json`, `missing_command`,
+                `database_not_configured`, `database_error`, `method_not_allowed`
+            message:
+              type: string
+        profile:
+          $ref: '#/components/schemas/Profile'

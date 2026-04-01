@@ -7,13 +7,14 @@ This document reflects agreed decisions: **integer primary keys** (`BIGINT UNSIG
 - **MySQL (InnoDB)** is the source of truth for durable game data.
 - **Memcached** stores short-lived **opaque access tokens** mapped to a user id (TTL-based expiry).
 - **No sliding TTL on every HTTP request** — session lifetime is renewed on **login** (new token + fresh TTL, e.g. **24 hours**). Fewer cache writes, simpler semantics.
-- **Simple IDs:** all entity primary keys are **unsigned integers** in the database and API (JSON numbers). No UUID / `BINARY(16)` conversion layer.
+- **Primary keys** are **unsigned integers** in the database. **Registration** exposes **`users.public_id`** (UUID v4 string) as API `player_id`, not the surrogate `users.id`.
 
 ## Identifiers
 
 | Entity | PK type | Notes |
 |--------|---------|--------|
-| `users.id` | `BIGINT UNSIGNED` AI | |
+| `users.id` | `BIGINT UNSIGNED` AI | Internal; FK target |
+| `users.public_id` | `CHAR(36)` UNIQUE NOT NULL | API-facing player id (`player_id`) |
 | `characters.id` | `BIGINT UNSIGNED` AI | |
 | `combats.id` | `BIGINT UNSIGNED` AI | |
 | `combat_moves.id` | `BIGINT UNSIGNED` AI | Append-friendly clustered inserts |
@@ -25,16 +26,15 @@ If you ever need strictly smaller row width and are sure volumes stay modest, `I
 ### `users`
 
 - `id` `BIGINT UNSIGNED` PK, auto-increment  
-- `email` (or `login`) `VARCHAR` **UNIQUE**  
-- `password_hash` `VARCHAR`  
+- `public_id` `CHAR(36)` **UNIQUE** NOT NULL — opaque id returned as **`player_id`** from `register`  
+- `status` `ENUM('active','inactive')` NOT NULL DEFAULT **`active`**  
 - `created_at`, `updated_at`  
-- Optional: `status` for ban/disable  
 
 ### `characters`
 
 - `id` `BIGINT UNSIGNED` PK, auto-increment  
 - `user_id` `BIGINT UNSIGNED` **UNIQUE** FK → `users.id` (one character per user unless requirements change)  
-- Game columns per assignment (name, level, stats, …)  
+- `name`, `level`, `fights`, `fights_won`, `coins`, `skill_1`, `skill_2`, `skill_3` (skills 0–50 on create per TZ)  
 - `version` `INT NOT NULL DEFAULT 0` — optimistic locking on updates after combat  
 - `updated_at`  
 

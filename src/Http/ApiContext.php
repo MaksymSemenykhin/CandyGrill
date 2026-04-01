@@ -12,7 +12,7 @@ namespace Game\Http;
 final readonly class ApiContext
 {
     /**
-     * @param BodyArray $body Decoded JSON body (same array used for `command` resolution).
+     * @param BodyArray $body Распарсенное тело (JSON или поля формы).
      */
     public function __construct(
         public IncomingRequest $request,

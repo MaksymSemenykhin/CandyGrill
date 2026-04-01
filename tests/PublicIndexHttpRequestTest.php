@@ -148,7 +148,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.3', $data['stage']);
+        $this->assertSame('1.4', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertIsString($data['message']);
         $this->assertStringContainsStringIgnoringCase('ping', $data['message']);
@@ -165,10 +165,22 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.3', $data['stage']);
+        $this->assertSame('1.4', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertStringContainsStringIgnoringCase('command', (string) $data['message']);
         $this->assertProfileShape($data['profile']);
+    }
+
+    /**
+     * @throws \JsonException
+     */
+    public function testOpenApiYamlIsServed(): void
+    {
+        $raw = $this->httpGet('/openapi.yaml');
+        $this->assertStringContainsString('openapi: 3.0.3', $raw);
+        $this->assertStringContainsString('operationId: registerCharacter', $raw);
+        $this->assertStringContainsString('version: 1.4.7', $raw);
+        $this->assertStringContainsString('additionalProperties: false', $raw);
     }
 
     public function testResponseContentTypeIsJson(): void
@@ -251,7 +263,6 @@ final class PublicIndexHttpRequestTest extends TestCase
         $issue = json_decode($rawIssue, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($issue['ok'], $rawIssue);
         $this->assertSame('Bearer', $issue['data']['token_type']);
-        $this->assertSame(7, $issue['data']['user_id']);
         $token = $issue['data']['access_token'];
         $this->assertIsString($token);
         $this->assertSame(64, strlen($token));
@@ -264,7 +275,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         $status = json_decode($rawStatus, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($status['ok'] ?? false, $rawStatus);
         $this->assertTrue($status['data']['authenticated'] ?? false, $rawStatus);
-        $this->assertSame(7, $status['data']['user_id']);
+        $this->assertSame($issue['data']['user_id'], $status['data']['user_id']);
     }
 
     /**

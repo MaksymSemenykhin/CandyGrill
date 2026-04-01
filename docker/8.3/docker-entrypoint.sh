@@ -11,4 +11,7 @@ if [ ! -f vendor/autoload.php ]; then
     composer install --no-interaction --no-progress --prefer-dist
 fi
 
+echo "[candygrill] Applying Phinx migrations (idempotent)..."
+php bin/migrate.php
+
 exec "$@"
