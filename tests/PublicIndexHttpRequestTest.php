@@ -35,7 +35,18 @@ final class PublicIndexHttpRequestTest extends TestCase
             self::markTestSkipped('enable allow_url_fopen for HTTP tests or set TEST_BASE_URL');
         }
 
-        $public = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'public';
+        $root = dirname(__DIR__);
+        $sync = getenv('SESSION_MEMORY_SYNC_FILE');
+        if (\is_string($sync) && $sync !== '') {
+            $syncPath = $sync[0] === DIRECTORY_SEPARATOR || (\strlen($sync) > 1 && $sync[1] === ':')
+                ? $sync
+                : $root . DIRECTORY_SEPARATOR . $sync;
+            if (is_file($syncPath)) {
+                @unlink($syncPath);
+            }
+        }
+
+        $public = $root . DIRECTORY_SEPARATOR . 'public';
         $port = self::allocateFreeLocalPort();
         $addr = '127.0.0.1:' . $port;
         self::$baseUrl = 'http://' . $addr;
@@ -137,7 +148,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.2', $data['stage']);
+        $this->assertSame('1.3', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertIsString($data['message']);
         $this->assertStringContainsStringIgnoringCase('ping', $data['message']);
@@ -154,7 +165,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.2', $data['stage']);
+        $this->assertSame('1.3', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertStringContainsStringIgnoringCase('command', (string) $data['message']);
         $this->assertProfileShape($data['profile']);
@@ -220,6 +231,43 @@ final class PublicIndexHttpRequestTest extends TestCase
     }
 
     /**
+     * @throws \JsonException
+     */
+    public function testPostSessionStatusWithoutToken(): void
+    {
+        $raw = $this->httpPostJson('/', ['command' => 'session_status']);
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($data['ok']);
+        $this->assertFalse($data['data']['authenticated']);
+        $this->assertProfileShape($data['profile']);
+    }
+
+    /**
+     * @throws \JsonException
+     */
+    public function testPostSessionIssueThenStatusWithBearer(): void
+    {
+        $rawIssue = $this->httpPostJson('/', ['command' => 'session_issue', 'user_id' => 7]);
+        $issue = json_decode($rawIssue, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($issue['ok'], $rawIssue);
+        $this->assertSame('Bearer', $issue['data']['token_type']);
+        $this->assertSame(7, $issue['data']['user_id']);
+        $token = $issue['data']['access_token'];
+        $this->assertIsString($token);
+        $this->assertSame(64, strlen($token));
+
+        // Built-in `php -S` may not expose custom headers to PHP; `access_token` in JSON is also accepted for resolution.
+        $rawStatus = $this->httpPostJson('/', [
+            'command' => 'session_status',
+            'access_token' => $token,
+        ]);
+        $status = json_decode($rawStatus, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($status['ok'] ?? false, $rawStatus);
+        $this->assertTrue($status['data']['authenticated'] ?? false, $rawStatus);
+        $this->assertSame(7, $status['data']['user_id']);
+    }
+
+    /**
      * @param mixed $profile
      */
     private function assertProfileShape(mixed $profile): void
@@ -252,15 +300,20 @@ final class PublicIndexHttpRequestTest extends TestCase
     }
 
     /**
-     * @param array<string, mixed> $body
+     * @param array<string, mixed>              $body
+     * @param array<string, string> $extraHeaders
      */
-    private function httpPostJson(string $path, array $body): string
+    private function httpPostJson(string $path, array $body, array $extraHeaders = []): string
     {
         $url = self::$baseUrl . $path;
+        $headerLines = ['Content-Type: application/json'];
+        foreach ($extraHeaders as $name => $value) {
+            $headerLines[] = $name . ': ' . $value;
+        }
         $ctx = stream_context_create([
             'http' => [
                 'method' => 'POST',
-                'header' => "Content-Type: application/json\r\n",
+                'header' => implode("\r\n", $headerLines) . "\r\n",
                 'content' => json_encode($body, JSON_THROW_ON_ERROR),
                 'timeout' => 5.0,
                 'ignore_errors' => true,

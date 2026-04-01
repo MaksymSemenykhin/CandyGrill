@@ -39,6 +39,19 @@ final class IncomingRequest
             }
         }
 
+        // Built-in server / some SAPIs omit headers from getallheaders(); align with CGI `HTTP_*` entries.
+        foreach (
+            [
+                'authorization' => 'HTTP_AUTHORIZATION',
+                'x-session-token' => 'HTTP_X_SESSION_TOKEN',
+            ] as $lower => $serverKey
+        ) {
+            if (!isset($headers[$lower]) && isset($_SERVER[$serverKey])
+                && \is_string($_SERVER[$serverKey]) && $_SERVER[$serverKey] !== '') {
+                $headers[$lower] = $_SERVER[$serverKey];
+            }
+        }
+
         $body = \file_get_contents('php://input');
 
         return new self($method, $path, $headers, \is_string($body) ? $body : '');

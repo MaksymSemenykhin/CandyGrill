@@ -9,6 +9,6 @@ namespace Game;
  */
 final class Bootstrap
 {
-    /** 1.2 = command API + optional PDO; `health` reports DB configuration and reachability. */
-    public const PHASE = '1.2';
+    /** 1.3 = Part 3 sessions: SESSION_DRIVER memory|memcached, Bearer token, session_issue / session_status. */
+    public const PHASE = '1.3';
 }

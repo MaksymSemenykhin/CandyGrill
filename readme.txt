@@ -110,7 +110,7 @@ Phase 1.1+ — JSON command API (incremental)
 --------------------------------------------
 Built in small steps so you can review each slice.
 
-**Текущий маркер:** `Bootstrap::PHASE` = **1.2**.
+**Текущий маркер:** `Bootstrap::PHASE` = **1.3**.
 
 ### Part 1 (база API)
 
@@ -125,6 +125,14 @@ Built in small steps so you can review each slice.
 * **`DatabaseConfig::isComplete()`** — есть ли `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` (не пустые); пароль может быть пустым. Без исключений.
 * **`HealthHandler`**, команда **`health`:** `data.database.configured`, `data.database.reachable` (`SELECT 1` через PDO только если конфиг полный; при ошибке подключения `reachable` = `false`).
 
+### Part 3 (done в **1.3**)
+
+* **`SESSION_DRIVER`** — `memory` (по умолчанию, один процесс PHP) или **`memcached`** (нужен `ext-memcached`, хост/порт из `.env`).
+* **`SESSION_TTL_SECONDS`**, **`SESSION_ALLOW_ISSUE`** — выдача токена без логина только если `SESSION_ALLOW_ISSUE=1` (в проде обычно `false`; Part 4 заменит на `login`).
+* **`SESSION_MEMORY_SYNC_FILE`** (опция при `memory`) — путь к JSON-файлу, общий между запросами `php -S` (в PHPUnit задан по умолчанию; для FPM без этого файла используется чисто in-memory singleton на воркер).
+* Разбор сессии на каждый POST: **`Authorization: Bearer <token>`**, опционально **`X-Session-Token: <token>`**, либо поле JSON **`access_token`** (последнее удобно для `php -S`, где заголовки до скрипта доходят не везде). Результат — в **`Game\Http\ApiContext`**.
+* Команды **`session_issue`** (тело: `user_id` положительный int) и **`session_status`** (смотрит Bearer, отвечает `authenticated` и при необходимости `user_id`).
+
 **curl** (порт из `.env`, чаще **8080**):
 
 ```bash
@@ -135,12 +143,18 @@ curl -sS -X POST "http://127.0.0.1:8080/" \
 curl -sS -X POST "http://127.0.0.1:8080/" \
   -H "Content-Type: application/json" \
   -d '{"command":"health"}'
+curl -sS -X POST "http://127.0.0.1:8080/" \
+  -H "Content-Type: application/json" \
+  -d '{"command":"session_issue","user_id":1}'
+curl -sS -X POST "http://127.0.0.1:8080/" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_TOKEN_HERE" \
+  -d '{"command":"session_status"}'
 ```
 
 ### Дальше по плану
 
-* **Part 3:** sessions — `SESSION_DRIVER` memory / Memcached, выдача токена и разбор запроса.
-* **Part 4:** `register`, `login`, `me` (+ репозитории).
+* **Part 4:** `register`, `login`, `me` (+ репозитории; `login` будет выдавать токен вместо `session_issue`).
 
 Later phases
 ------------

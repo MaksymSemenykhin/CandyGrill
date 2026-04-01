@@ -6,10 +6,11 @@ namespace Game\Api\Handler;
 
 use Game\Config\DatabaseConfig;
 use Game\Database\PdoFactory;
+use Game\Http\ApiContext;
 
 final class HealthHandler implements CommandHandler
 {
-    public function handle(): array
+    public function handle(ApiContext $context): array
     {
         $configured = DatabaseConfig::isComplete();
         $reachable = false;

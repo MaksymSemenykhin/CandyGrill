@@ -1,6 +1,7 @@
 /vendor/
 .phpunit.cache/
 .php-cs-fixer.cache
+.phpunit-session-store.json
 .env
 .env.local
 .env.*.local

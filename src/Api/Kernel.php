@@ -8,7 +8,9 @@ use Dotenv\Dotenv;
 use Game\Api\Handler\CommandHandler;
 use Game\Api\Validation\CommandBody;
 use Game\Bootstrap;
+use Game\Http\ApiContext;
 use Game\Http\IncomingRequest;
+use Game\Session\SessionService;
 use Symfony\Component\Validator\ConstraintViolationInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Validator\Validation;
@@ -38,7 +40,7 @@ final class Kernel
             $this->sendJson(200, [
                 'ok' => true,
                 'stage' => Bootstrap::PHASE,
-                'message' => 'Phase 1.2: POST JSON `command` — `ping`, `health` (DB status). Next: sessions, register/login/me.',
+                'message' => 'Phase 1.3: POST `command` — `ping`, `health`, `session_issue`, `session_status` (Bearer). Next: register/login/me.',
             ]);
 
             return;
@@ -97,7 +99,33 @@ final class Kernel
             return;
         }
 
-        $data = $handler->handle();
+        $sessionService = SessionService::fromEnvironment();
+        $authHeader = $req->header('Authorization');
+        $sessionToken = $req->header('X-Session-Token');
+        if (($authHeader === null || $authHeader === '') && $sessionToken !== null && $sessionToken !== '') {
+            $authHeader = 'Bearer ' . $sessionToken;
+        }
+        $session = $sessionService->resolveFromBearer($authHeader);
+        if ($session === null) {
+            $bodyToken = $body['access_token'] ?? null;
+            if (\is_string($bodyToken) && $bodyToken !== '') {
+                $session = $sessionService->resolveFromBearer('Bearer ' . $bodyToken);
+            }
+        }
+
+        $apiContext = new ApiContext(request: $req, body: $body, session: $session);
+
+        try {
+            $data = $handler->handle($apiContext);
+        } catch (ApiHttpException $e) {
+            $this->sendJson($e->httpStatus, [
+                'ok' => false,
+                'error' => ['code' => $e->errorCode, 'message' => $e->getMessage()],
+            ]);
+
+            return;
+        }
+
         $this->sendJson(200, ['ok' => true, 'data' => $data]);
     }
 

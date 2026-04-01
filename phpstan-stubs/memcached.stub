@@ -1,0 +1,19 @@
+<?php
+
+declare(strict_types=1);
+
+/**
+ * Minimal stub for CI environments where ext-memcached is not loaded.
+ */
+class Memcached
+{
+    public const RES_NOTFOUND = 16;
+
+    public function addServer(string $host, int $port): bool {}
+
+    public function get(string $key): mixed {}
+
+    public function getResultCode(): int {}
+
+    public function set(string $key, mixed $value, int $expiration = 0): bool {}
+}
