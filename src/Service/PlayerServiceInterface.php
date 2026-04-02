@@ -20,7 +20,7 @@ interface PlayerServiceInterface
     public function register(DatabaseConnection $db, string $characterName): array;
 
     /**
-     * @return array{session_id: string, access_token: string, token_type: 'Bearer', expires_in: int}
+     * @return array{session_id: string, expires_in: int}
      *
      * @throws ApiHttpException
      */

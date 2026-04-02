@@ -24,7 +24,7 @@
 | Требование | Реализация |
 |------------|------------|
 | Клиент передаёт **player identifier** | Поле **`player_id`** — строка **UUID v4** (то же значение, что **`player_id`** из `register`). |
-| Сервер «логинит» и возвращает **session identifier** | **`session_id`** и дубликат **`access_token`** (64 hex); тип **`Bearer`**; **`expires_in`** секунд из `SESSION_TTL_SECONDS`. Использовать в заголовке **`Authorization: Bearer …`** или поле **`access_token`** в теле (как у существующей сессии). |
+| Сервер «логинит» и возвращает **session identifier** | **`session_id`** — токен сессии (64 hex); **`expires_in`** из `SESSION_TTL_SECONDS`. Передавать в заголовке **`Authorization: Bearer …`** или в теле как **`session_id`** (для совместимости ещё принимается **`access_token`**). |
 | Неактивный пользователь | Строка в **`users`** с **`status` ≠ `active`** не получает сессию → **401** `unknown_player`. |
 
 Файлы: **`LoginHandler`**, **`PlayerService::login`**, **`LoginPlayerIdInput`**, **`ActivePlayerLookup`**, **`UserRepository`**, **`SessionService`**.
@@ -39,9 +39,9 @@
 
 ## Локализация ответов
 
-Тексты ошибок и сообщения **`GET /`** переводятся через **Symfony Translation** (`symfony/translation`), каталог **`translations/api.{locale}.yaml`**, домен **`api`**.
+Тексты ошибок, **bootstrap** (**`GET /`**) и остальных ответов API переводятся через **Symfony Translation** (`symfony/translation`), каталог **`translations/api.{locale}.yaml`**, домен **`api`**.
 
-**Приоритет языка:** поля тела **`locale`** или **`lang`** (строка `en` / `ru` и региональные варианты вроде `ru-RU`) → те же имена в **query** (удобно для **`GET /?locale=ru`**) → **`Accept-Language`** (слово `ru`) → **`APP_LOCALE`** в `.env**.
+**Приоритет языка:** поля тела **`locale`** или **`lang`** (строка `en` / `ru` и региональные варианты вроде `ru-RU`) → те же имена в **query** (в т.ч. **`GET /?locale=ru`** для bootstrap и **`POST /?locale=ru`** для команд) → **`Accept-Language`** (слово `ru`) → **`APP_LOCALE`** в `.env**.
 
 В каждом JSON-ответе Kernel добавляет поле **`locale`**: фактически применённый код языка (`en` | `ru`).
 

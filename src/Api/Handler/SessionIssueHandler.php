@@ -31,8 +31,7 @@ final class SessionIssueHandler implements CommandHandler
         $issued = SessionService::fromEnvironment()->issueToken($internalUserId);
 
         return [
-            'access_token' => $issued['token'],
-            'token_type' => 'Bearer',
+            'session_id' => $issued['token'],
             'expires_in' => $issued['expires_in'],
             'user_id' => $this->formatUserIdForApiResponse($internalUserId),
         ];

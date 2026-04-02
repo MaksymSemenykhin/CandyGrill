@@ -151,7 +151,6 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertSame('1.5', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertIsString($data['message']);
-        $this->assertStringContainsStringIgnoringCase('ping', $data['message']);
         $this->assertStringContainsStringIgnoringCase('POST', $data['message']);
         $this->assertApiEnvelope($data);
     }
@@ -280,8 +279,12 @@ final class PublicIndexHttpRequestTest extends TestCase
         $raw = $this->httpGet('/openapi.yaml');
         $this->assertStringContainsString('openapi: 3.0.3', $raw);
         $this->assertStringContainsString('operationId: postCommand', $raw);
-        $this->assertStringContainsString('operationId: getRoot', $raw);
-        $this->assertStringContainsString('version: 1.5.2', $raw);
+        $this->assertStringContainsString('version: 1.6.13', $raw);
+        $this->assertStringContainsString('Шаблон: register', $raw);
+        $this->assertStringContainsString('Шаблон: login', $raw);
+        $this->assertStringNotContainsString('- name: Bootstrap', $raw);
+        $this->assertStringContainsString('- name: Commands', $raw);
+        $this->assertStringContainsString('propertyName: command', $raw);
         $this->assertStringContainsString('additionalProperties: false', $raw);
     }
 
@@ -376,16 +379,15 @@ final class PublicIndexHttpRequestTest extends TestCase
         $rawIssue = $this->httpPostJson('/', ['command' => 'session_issue', 'user_id' => 7]);
         $issue = json_decode($rawIssue, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($issue['ok'], $rawIssue);
-        $this->assertSame('Bearer', $issue['data']['token_type']);
-        $token = $issue['data']['access_token'];
+        $token = $issue['data']['session_id'];
         $this->assertIsString($token);
         $this->assertSame(64, strlen($token));
         $this->assertApiEnvelope($issue);
 
-        // Built-in `php -S` may not expose custom headers to PHP; `access_token` in JSON is also accepted for resolution.
+        // В теле запроса токен передаётся как `session_id` (или устаревшее имя `access_token`).
         $rawStatus = $this->httpPostJson('/', [
             'command' => 'session_status',
-            'access_token' => $token,
+            'session_id' => $token,
         ]);
         $status = json_decode($rawStatus, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($status['ok'] ?? false, $rawStatus);
@@ -401,24 +403,6 @@ final class PublicIndexHttpRequestTest extends TestCase
     {
         $this->assertArrayHasKey('locale', $data);
         $this->assertSame($expectedLocale, $data['locale']);
-        $this->assertProfileShape($data['profile']);
-    }
-
-    /**
-     * @param mixed $profile
-     */
-    private function assertProfileShape(mixed $profile): void
-    {
-        $this->assertIsArray($profile);
-        $this->assertArrayHasKey('time_ms', $profile);
-        $this->assertIsNumeric($profile['time_ms']);
-        $this->assertGreaterThanOrEqual(0.0, (float) $profile['time_ms']);
-        $this->assertArrayHasKey('memory_bytes', $profile);
-        $this->assertIsInt($profile['memory_bytes']);
-        $this->assertGreaterThanOrEqual(0, $profile['memory_bytes']);
-        $this->assertArrayHasKey('memory_peak_bytes', $profile);
-        $this->assertIsInt($profile['memory_peak_bytes']);
-        $this->assertGreaterThanOrEqual($profile['memory_bytes'], $profile['memory_peak_bytes']);
     }
 
     private function httpGet(string $path): string

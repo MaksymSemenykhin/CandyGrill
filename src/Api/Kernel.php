@@ -23,8 +23,6 @@ use Game\Session\SessionService;
  */
 final class Kernel
 {
-    private ?int $requestStartedNs = null;
-
     public static function boot(string $projectRoot): self
     {
         Dotenv::createImmutable($projectRoot)->safeLoad();
@@ -41,15 +39,15 @@ final class Kernel
 
     public function run(): void
     {
-        $this->requestStartedNs = hrtime(true);
         $req = IncomingRequest::fromGlobals();
-        $this->i18n->setLocale(LocaleResolver::resolve(null, $req));
+        $preBodyLocale = LocaleResolver::resolve(null, $req);
+        $this->i18n->setLocale($preBodyLocale);
 
         if ($req->method === 'GET' && ($req->path === '/' || $req->path === '/index.php')) {
             $this->sendJson(200, [
                 'ok' => true,
                 'stage' => Bootstrap::PHASE,
-                'message' => $this->i18n->trans('api.bootstrap.message'),
+                'message' => $this->i18n->trans('api.bootstrap.message', [], $preBodyLocale),
             ]);
 
             return;
@@ -58,7 +56,7 @@ final class Kernel
         if ($req->method !== 'POST') {
             $this->sendJson(405, [
                 'ok' => false,
-                'error' => ['code' => 'method_not_allowed', 'message' => $this->i18n->trans('api.error.method_not_allowed')],
+                'error' => ['code' => 'method_not_allowed', 'message' => $this->i18n->trans('api.error.method_not_allowed', [], $preBodyLocale)],
             ]);
 
             return;
@@ -70,7 +68,7 @@ final class Kernel
         } catch (\JsonException) {
             $this->sendJson(400, [
                 'ok' => false,
-                'error' => ['code' => 'invalid_json', 'message' => $this->i18n->trans('api.error.invalid_json')],
+                'error' => ['code' => 'invalid_json', 'message' => $this->i18n->trans('api.error.invalid_json', [], $preBodyLocale)],
             ]);
 
             return;
@@ -118,8 +116,15 @@ final class Kernel
         }
         $session = $sessionService->resolveFromBearer($authHeader);
         if ($session === null) {
-            $bodyToken = $body['access_token'] ?? null;
-            if (\is_string($bodyToken) && $bodyToken !== '') {
+            $bodyToken = null;
+            foreach (['session_id', 'access_token'] as $bodyTokenKey) {
+                $candidate = $body[$bodyTokenKey] ?? null;
+                if (\is_string($candidate) && $candidate !== '') {
+                    $bodyToken = $candidate;
+                    break;
+                }
+            }
+            if ($bodyToken !== null) {
                 $session = $sessionService->resolveFromBearer('Bearer ' . $bodyToken);
             }
         }
@@ -180,15 +185,6 @@ final class Kernel
      */
     private function sendJson(int $status, array $payload): void
     {
-        if ($this->requestStartedNs !== null) {
-            $now = hrtime(true);
-            $payload['profile'] = [
-                'time_ms' => \round(($now - $this->requestStartedNs) / 1_000_000, 3),
-                'memory_bytes' => memory_get_usage(true),
-                'memory_peak_bytes' => memory_get_peak_usage(true),
-            ];
-        }
-
         $payload['locale'] = $this->i18n->getLocale();
 
         \header('Content-Type: application/json; charset=utf-8', true, $status);

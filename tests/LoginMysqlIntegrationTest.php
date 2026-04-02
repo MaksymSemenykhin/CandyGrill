@@ -74,9 +74,8 @@ final class LoginMysqlIntegrationTest extends TestCase
             $loginData = $login->handle($loginCtx, new DatabaseConnection($pdo));
 
             $this->assertArrayHasKey('session_id', $loginData);
-            $this->assertSame($loginData['session_id'], $loginData['access_token']);
+            $this->assertArrayNotHasKey('access_token', $loginData);
             $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $loginData['session_id']);
-            $this->assertSame('Bearer', $loginData['token_type']);
             $this->assertGreaterThan(0, $loginData['expires_in']);
         } finally {
             if ($publicPlayerId !== null) {

@@ -28,8 +28,6 @@ final class LoginHandlerTest extends TestCase
 
         $payload = [
             'session_id' => str_repeat('a', 64),
-            'access_token' => str_repeat('a', 64),
-            'token_type' => 'Bearer',
             'expires_in' => 3600,
         ];
 

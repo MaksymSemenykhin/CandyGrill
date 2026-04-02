@@ -63,7 +63,7 @@ Project lives on a Windows drive (e.g. `H:\CandyGrill` → `/mnt/h/CandyGrill` i
    * Git Bash / WSL / Linux: `chmod +x sail` then `./sail build` and `./sail up -d`
    * Windows CMD: `sail.bat build` and `sail.bat up -d`
    * Or: `docker compose build` / `docker compose up -d`
-3. Open `http://127.0.0.1:8080/` — JSON от командного API: `ok`, `stage`, `message` и объект `profile` (время и память).
+3. Open `http://127.0.0.1:8080/` — JSON от командного API: `ok`, `stage`, `message`, `locale`.
 4. Inside the app container, `composer install` runs on first start if `vendor/` is missing, then **`php bin/migrate.php`** runs on **every** container start so the DB schema stays in sync (rebuild image or `docker compose build app` after changing `docker-entrypoint.sh`).
 
 ### Verify phase 0.1 (automated)
@@ -120,10 +120,10 @@ Built in small steps so you can review each slice.
 
 * **`Game\Api\Kernel`** + **`Game\Http\IncomingRequest`**.
 * **Локализация:** Symfony **`symfony/translation`**, **`translations/api.*.yaml`**; язык: тело **`locale`** / **`lang`**, query **`?locale=`**, **`Accept-Language`**, **`APP_LOCALE`**. В ответе поле **`locale`**. Подробнее: **`docs/technical-spec.md`**.
-* **GET** `/` или `/index.php` — JSON: `ok`, `stage`, `message`, **`profile`** (`time_ms`, `memory_bytes`, `memory_peak_bytes`).
+* **GET** `/` или `/index.php` — JSON: `ok`, `stage`, `message`, **`locale`**.
 * **POST** `/`, `application/json`, поле **`command`** (`a-z`, `0-9`, `_`).
 * Команда проверяется **по файлу** в `src/Api/Handler/{Studly}Handler.php` (`ping` → `PingHandler`), класс реализует `CommandHandler`.
-* Неизвестная команда → `400`, `unknown_command`; у ответов из `Kernel` есть **`profile`**.
+* Неизвестная команда → `400`, `unknown_command`; у ответов из `Kernel` есть **`locale`**.
 
 ### Part 2 (done в **1.2**)
 
@@ -135,7 +135,7 @@ Built in small steps so you can review each slice.
 * **`SESSION_DRIVER`** — `memory` (по умолчанию, один процесс PHP) или **`memcached`** (нужен `ext-memcached`, хост/порт из `.env`).
 * **`SESSION_TTL_SECONDS`**, **`SESSION_ALLOW_ISSUE`** — выдача токена без логина только если `SESSION_ALLOW_ISSUE=1` (в проде обычно `false`; Part 4 заменит на `login`).
 * **`SESSION_MEMORY_SYNC_FILE`** (опция при `memory`) — путь к JSON-файлу, общий между запросами `php -S` (в PHPUnit задан по умолчанию; для FPM без этого файла используется чисто in-memory singleton на воркер).
-* Разбор сессии на каждый POST: **`Authorization: Bearer <token>`**, опционально **`X-Session-Token: <token>`**, либо поле JSON **`access_token`** (последнее удобно для `php -S`, где заголовки до скрипта доходят не везде). Результат — в **`Game\Http\ApiContext`**.
+* Разбор сессии на каждый POST: **`Authorization: Bearer <token>`**, опционально **`X-Session-Token: <token>`**, либо в теле JSON **`session_id`** (тот же токен, что после `login`; для совместимости ещё **`access_token`**). Удобно для `php -S`, где заголовки до скрипта доходят не везде. Результат — в **`Game\Http\ApiContext`**.
 * Команды **`session_issue`** (тело: `user_id` положительный int) и **`session_status`** (смотрит Bearer, отвечает `authenticated` и при необходимости `user_id`).
 
 **curl** (порт из `.env`, чаще **8080**):
@@ -160,7 +160,7 @@ curl -sS -X POST "http://127.0.0.1:8080/" \
 ### Part 4 (в процессе)
 
 * **Официальное ТЗ:** **`docs/assignment-original-spec.md`**, сверка **`docs/technical-spec.md`**.
-* **`login`:** **`player_id`** (UUID из `register`) → **`session_id`** / **`access_token`** (Bearer). См. **`public/openapi.yaml`**.
+* **`login`:** **`player_id`** (UUID из `register`) → **`session_id`**, **`expires_in`**. См. **`public/openapi.yaml`**.
 * **Дальше:** `me`, бой (ТЗ п.3–6).
 
 ### OpenAPI / Swagger UI

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Game\Api;
 
 /**
- * Maps to a non-200 JSON error response from {@see Kernel} (still includes `profile` when applicable).
+ * Maps to a non-200 JSON response from {@see Kernel}.
  */
 final class ApiHttpException extends \RuntimeException
 {

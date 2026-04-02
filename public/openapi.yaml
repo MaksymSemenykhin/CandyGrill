@@ -1,134 +1,109 @@
 openapi: 3.0.3
 info:
   title: CandyGrill
-  version: 1.5.2
-  description: |
-    **Language:** optional `locale` or `lang` (`en` | `ru`) in JSON/form body, query (`GET /?locale=ru`), or `Accept-Language`.
-    Every JSON response includes **`locale`** — the negotiated language used for translated `message` / `error.message` fields.
+  version: 1.6.13
 
 servers:
   - url: http://127.0.0.1:8080
-    description: Port from `.env` (`APP_PORT`)
 
 tags:
-  - name: api
-    description: Command API (JSON or form)
+  - name: Commands
 
 paths:
   /:
-    get:
-      tags: [api]
-      summary: API bootstrap (GET)
-      description: Public welcome JSON. Same behavior as `GET /index.php`. Use query `locale` or `lang` to translate `message`.
-      operationId: getRoot
+    post:
+      tags: [Commands]
+      summary: POST /
+      operationId: postCommand
       parameters:
         - $ref: '#/components/parameters/LocaleQuery'
         - $ref: '#/components/parameters/LangQuery'
-      responses:
-        '200':
-          description: Bootstrap info
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/BootstrapOk'
-    post:
-      tags: [api]
-      summary: Invoke API command
-      operationId: postCommand
-      description: |
-        Optional **Bearer** session token (`Authorization` or `X-Session-Token`), or `access_token` in JSON for `session_status`.
-        Dev-only `session_issue` may return **403** when `SESSION_ALLOW_ISSUE` is off.
-      security:
-        - {}
-        - bearerAuth: []
       requestBody:
         required: true
         content:
           application/json:
             schema:
               oneOf:
-                - $ref: '#/components/schemas/RegisterRequestJson'
-                - $ref: '#/components/schemas/LoginRequestJson'
-                - $ref: '#/components/schemas/PingRequestJson'
-                - $ref: '#/components/schemas/HealthRequestJson'
-                - $ref: '#/components/schemas/SessionStatusRequestJson'
-                - $ref: '#/components/schemas/SessionIssueRequestJson'
+                - $ref: '#/components/schemas/RegisterRequest'
+                - $ref: '#/components/schemas/LoginRequest'
+              discriminator:
+                propertyName: command
+                mapping:
+                  register: '#/components/schemas/RegisterRequest'
+                  login: '#/components/schemas/LoginRequest'
             examples:
               register:
+                summary: 'Шаблон: register'
                 value:
                   command: register
                   name: MyHero
               login:
+                summary: 'Шаблон: login'
                 value:
                   command: login
                   player_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
-              ping:
-                value:
-                  command: ping
-              health:
-                value:
-                  command: health
+
           application/x-www-form-urlencoded:
             schema:
               oneOf:
-                - $ref: '#/components/schemas/RegisterRequestForm'
-                - $ref: '#/components/schemas/LoginRequestForm'
-                - $ref: '#/components/schemas/PingRequestForm'
-                - $ref: '#/components/schemas/HealthRequestForm'
-                - $ref: '#/components/schemas/SessionStatusRequestForm'
-                - $ref: '#/components/schemas/SessionIssueRequestForm'
+                - $ref: '#/components/schemas/RegisterRequest'
+                - $ref: '#/components/schemas/LoginRequest'
+              discriminator:
+                propertyName: command
+                mapping:
+                  register: '#/components/schemas/RegisterRequest'
+                  login: '#/components/schemas/LoginRequest'
+            examples:
+              register:
+                summary: 'Шаблон: register (form)'
+                value:
+                  command: register
+                  name: MyHero
+              login:
+                summary: 'Шаблон: login (form)'
+                value:
+                  command: login
+                  player_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+
       responses:
         '200':
-          description: Success
+          description: OK
           content:
             application/json:
               schema:
                 oneOf:
                   - $ref: '#/components/schemas/RegisterOk'
                   - $ref: '#/components/schemas/LoginOk'
-                  - $ref: '#/components/schemas/PingOk'
-                  - $ref: '#/components/schemas/HealthOk'
-                  - $ref: '#/components/schemas/SessionStatusOk'
-                  - $ref: '#/components/schemas/SessionIssueOk'
+
         '400':
-          description: Validation failed or malformed body
+          description: Bad request
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+
         '401':
-          description: Login rejected (e.g. unknown player)
+          description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
-        '403':
-          description: Forbidden (e.g. session_issue disabled)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorBody'
+
         '405':
-          description: Method not allowed (use POST for commands; GET is allowed for `/` only)
+          description: Method Not Allowed
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
+
         '503':
-          description: Service unavailable
+          description: Service Unavailable
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorBody'
 
 components:
-  securitySchemes:
-    bearerAuth:
-      type: http
-      scheme: bearer
-      bearerFormat: opaque
-      description: Session token from `login` or dev `session_issue`.
-
   parameters:
     LocaleQuery:
       name: locale
@@ -137,7 +112,6 @@ components:
       schema:
         type: string
         enum: [en, ru]
-      description: Response language (`lang` is an alias)
     LangQuery:
       name: lang
       in: query
@@ -147,7 +121,7 @@ components:
         enum: [en, ru]
 
   schemas:
-    RegisterRequestJson:
+    RegisterRequest:
       type: object
       required: [command, name]
       additionalProperties: false
@@ -159,16 +133,14 @@ components:
           type: string
           minLength: 1
           maxLength: 64
-          description: Character name
         locale:
           type: string
           enum: [en, ru]
-          description: Response language (`lang` is an alias)
         lang:
           type: string
           enum: [en, ru]
 
-    LoginRequestJson:
+    LoginRequest:
       type: object
       required: [command, player_id]
       additionalProperties: false
@@ -185,155 +157,10 @@ components:
         lang:
           type: string
           enum: [en, ru]
-
-    PingRequestJson:
-      type: object
-      required: [command]
-      additionalProperties: false
-      properties:
-        command:
-          type: string
-          enum: [ping]
-        locale:
-          type: string
-          enum: [en, ru]
-        lang:
-          type: string
-          enum: [en, ru]
-
-    HealthRequestJson:
-      type: object
-      required: [command]
-      additionalProperties: false
-      properties:
-        command:
-          type: string
-          enum: [health]
-        locale:
-          type: string
-          enum: [en, ru]
-        lang:
-          type: string
-          enum: [en, ru]
-
-    SessionStatusRequestJson:
-      type: object
-      required: [command]
-      additionalProperties: false
-      properties:
-        command:
-          type: string
-          enum: [session_status]
-        access_token:
-          type: string
-          description: Optional; same value as Bearer (workaround when frontends cannot set headers)
-        locale:
-          type: string
-          enum: [en, ru]
-        lang:
-          type: string
-          enum: [en, ru]
-
-    SessionIssueRequestJson:
-      type: object
-      required: [command, user_id]
-      additionalProperties: false
-      properties:
-        command:
-          type: string
-          enum: [session_issue]
-        user_id:
-          description: Internal integer id (≥1) or player UUID when DB is configured
-          oneOf:
-            - type: integer
-              minimum: 1
-            - type: string
-              format: uuid
-        locale:
-          type: string
-          enum: [en, ru]
-        lang:
-          type: string
-          enum: [en, ru]
-
-    RegisterRequestForm:
-      type: object
-      required: [command, name]
-      additionalProperties: false
-      properties:
-        command:
-          type: string
-          enum: [register]
-        name:
-          type: string
-          minLength: 1
-          maxLength: 64
-          description: Character name
-        locale:
-          type: string
-          enum: [en, ru]
-        lang:
-          type: string
-          enum: [en, ru]
-
-    LoginRequestForm:
-      type: object
-      required: [command, player_id]
-      additionalProperties: false
-      properties:
-        command:
-          type: string
-          enum: [login]
-        player_id:
-          type: string
-          format: uuid
-        locale:
-          type: string
-          enum: [en, ru]
-        lang:
-          type: string
-          enum: [en, ru]
-
-    PingRequestForm:
-      allOf:
-        - $ref: '#/components/schemas/PingRequestJson'
-
-    HealthRequestForm:
-      allOf:
-        - $ref: '#/components/schemas/HealthRequestJson'
-
-    SessionStatusRequestForm:
-      allOf:
-        - $ref: '#/components/schemas/SessionStatusRequestJson'
-
-    SessionIssueRequestForm:
-      allOf:
-        - $ref: '#/components/schemas/SessionIssueRequestJson'
-
-    BootstrapOk:
-      type: object
-      required: [ok, stage, message, profile, locale]
-      properties:
-        ok:
-          type: boolean
-          example: true
-        locale:
-          type: string
-          enum: [en, ru]
-          description: Negotiated language for this response
-        stage:
-          type: string
-          description: Bootstrap phase marker (e.g. from `Bootstrap::PHASE`)
-          example: '1.5'
-        message:
-          type: string
-          description: Localized hint to use POST with commands
-        profile:
-          $ref: '#/components/schemas/Profile'
 
     RegisterOk:
       type: object
-      required: [ok, data, profile, locale]
+      required: [ok, data, locale]
       properties:
         ok:
           type: boolean
@@ -341,7 +168,6 @@ components:
         locale:
           type: string
           enum: [en, ru]
-          description: Negotiated language for this response
         data:
           type: object
           required: [player_id]
@@ -350,12 +176,10 @@ components:
             player_id:
               type: string
               format: uuid
-        profile:
-          $ref: '#/components/schemas/Profile'
 
     LoginOk:
       type: object
-      required: [ok, data, profile, locale]
+      required: [ok, data, locale]
       properties:
         ok:
           type: boolean
@@ -365,145 +189,14 @@ components:
           enum: [en, ru]
         data:
           type: object
-          required: [session_id, access_token, token_type, expires_in]
+          required: [session_id, expires_in]
           additionalProperties: false
           properties:
             session_id:
               type: string
-              description: Opaque session token (same as access_token); use as Bearer
-            access_token:
-              type: string
-            token_type:
-              type: string
-              example: Bearer
+              description: Токен сессии (64 hex); в заголовке — `Authorization: Bearer <session_id>`.
             expires_in:
               type: integer
-              description: TTL seconds
-        profile:
-          $ref: '#/components/schemas/Profile'
-
-    PingOk:
-      type: object
-      required: [ok, data, profile, locale]
-      properties:
-        ok:
-          type: boolean
-          example: true
-        locale:
-          type: string
-          enum: [en, ru]
-        data:
-          type: object
-          required: [pong]
-          additionalProperties: false
-          properties:
-            pong:
-              type: boolean
-              example: true
-        profile:
-          $ref: '#/components/schemas/Profile'
-
-    HealthOk:
-      type: object
-      required: [ok, data, profile, locale]
-      properties:
-        ok:
-          type: boolean
-          example: true
-        locale:
-          type: string
-          enum: [en, ru]
-        data:
-          type: object
-          required: [database]
-          additionalProperties: false
-          properties:
-            database:
-              type: object
-              required: [configured, reachable]
-              properties:
-                configured:
-                  type: boolean
-                reachable:
-                  type: boolean
-        profile:
-          $ref: '#/components/schemas/Profile'
-
-    SessionStatusOk:
-      type: object
-      required: [ok, data, profile, locale]
-      properties:
-        ok:
-          type: boolean
-          example: true
-        locale:
-          type: string
-          enum: [en, ru]
-        data:
-          oneOf:
-            - type: object
-              required: [authenticated]
-              additionalProperties: false
-              properties:
-                authenticated:
-                  type: boolean
-                  enum: [false]
-            - type: object
-              required: [authenticated, user_id]
-              additionalProperties: false
-              properties:
-                authenticated:
-                  type: boolean
-                  enum: [true]
-                user_id:
-                  oneOf:
-                    - type: integer
-                    - type: string
-                      format: uuid
-        profile:
-          $ref: '#/components/schemas/Profile'
-
-    SessionIssueOk:
-      type: object
-      required: [ok, data, profile, locale]
-      properties:
-        ok:
-          type: boolean
-          example: true
-        locale:
-          type: string
-          enum: [en, ru]
-        data:
-          type: object
-          required: [access_token, token_type, expires_in, user_id]
-          additionalProperties: false
-          properties:
-            access_token:
-              type: string
-            token_type:
-              type: string
-              example: Bearer
-            expires_in:
-              type: integer
-            user_id:
-              oneOf:
-                - type: integer
-                - type: string
-                  format: uuid
-        profile:
-          $ref: '#/components/schemas/Profile'
-
-    Profile:
-      type: object
-      required: [time_ms, memory_bytes, memory_peak_bytes]
-      properties:
-        time_ms:
-          type: number
-          format: float
-        memory_bytes:
-          type: integer
-        memory_peak_bytes:
-          type: integer
 
     ErrorBody:
       type: object
@@ -521,12 +214,5 @@ components:
           properties:
             code:
               type: string
-              description: |
-                Examples: `invalid_name`, `invalid_request`, `invalid_json`, `missing_command`,
-                `unknown_command`, `invalid_player_id`, `unknown_player`, `invalid_user_id`,
-                `session_issue_disabled`, `database_not_configured`, `database_error`,
-                `method_not_allowed`
             message:
               type: string
-        profile:
-          $ref: '#/components/schemas/Profile'

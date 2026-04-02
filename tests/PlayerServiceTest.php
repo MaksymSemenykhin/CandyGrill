@@ -79,9 +79,8 @@ final class PlayerServiceTest extends TestCase
         $data = $service->login($lookup, $uuid);
 
         $this->assertArrayHasKey('session_id', $data);
-        $this->assertSame($data['session_id'], $data['access_token']);
+        $this->assertArrayNotHasKey('access_token', $data);
         $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $data['session_id']);
-        $this->assertSame('Bearer', $data['token_type']);
         $this->assertSame(86400, $data['expires_in']);
     }
 }

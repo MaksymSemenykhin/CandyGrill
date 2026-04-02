@@ -70,8 +70,6 @@ final class PlayerService implements PlayerServiceInterface
 
         return [
             'session_id' => $issued['token'],
-            'access_token' => $issued['token'],
-            'token_type' => 'Bearer',
             'expires_in' => $issued['expires_in'],
         ];
     }

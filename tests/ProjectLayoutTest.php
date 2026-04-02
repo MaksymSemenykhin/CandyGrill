@@ -55,8 +55,9 @@ final class ProjectLayoutTest extends TestCase
     public function testOpenApiRegisterOperationIsMinimal(): void
     {
         $yaml = (string) file_get_contents($this->root . '/public/openapi.yaml');
-        $this->assertStringContainsString('version: 1.5.2', $yaml);
+        $this->assertStringContainsString('version: 1.6.13', $yaml);
         $this->assertStringContainsString('operationId: postCommand', $yaml);
+        $this->assertStringNotContainsString('operationId: getRoot', $yaml);
         $this->assertStringContainsString('additionalProperties: false', $yaml);
         $this->assertStringNotContainsString("ENUM('active','inactive')", $yaml);
     }
