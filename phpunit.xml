@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-         bootstrap="vendor/autoload.php"
+         bootstrap="tests/bootstrap.php"
          colors="true"
          cacheDirectory=".phpunit.cache">
     <testsuites>
@@ -13,5 +13,6 @@
         <env name="SESSION_DRIVER" value="memory"/>
         <env name="SESSION_ALLOW_ISSUE" value="1"/>
         <env name="SESSION_MEMORY_SYNC_FILE" value=".phpunit-session-store.json"/>
+        <env name="APP_LOCALE" value="en"/>
     </php>
 </phpunit>

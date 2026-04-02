@@ -14,6 +14,8 @@ use Game\Api\Validation\CommandBody;
 use Game\Bootstrap;
 use Game\Http\ApiContext;
 use Game\Http\IncomingRequest;
+use Game\I18n\ApiTranslator;
+use Game\I18n\LocaleResolver;
 use Game\Session\SessionService;
 
 /**
@@ -26,20 +28,28 @@ final class Kernel
     public static function boot(string $projectRoot): self
     {
         Dotenv::createImmutable($projectRoot)->safeLoad();
+        $i18n = ApiTranslator::createForProject($projectRoot);
+        ApiValidation::configure($i18n->symfonyTranslator(), 'api');
 
-        return new self();
+        return new self($i18n);
+    }
+
+    public function __construct(
+        private readonly ApiTranslator $i18n,
+    ) {
     }
 
     public function run(): void
     {
         $this->requestStartedNs = hrtime(true);
         $req = IncomingRequest::fromGlobals();
+        $this->i18n->setLocale(LocaleResolver::resolve(null, $req));
 
         if ($req->method === 'GET' && ($req->path === '/' || $req->path === '/index.php')) {
             $this->sendJson(200, [
                 'ok' => true,
                 'stage' => Bootstrap::PHASE,
-                'message' => 'Phase 1.4: POST JSON `command` — `register` (character `name` → `player_id` UUID), `ping`, `health`, session_*. Next: login / me.',
+                'message' => $this->i18n->trans('api.bootstrap.message'),
             ]);
 
             return;
@@ -48,7 +58,7 @@ final class Kernel
         if ($req->method !== 'POST') {
             $this->sendJson(405, [
                 'ok' => false,
-                'error' => ['code' => 'method_not_allowed', 'message' => 'Use POST with application/json or application/x-www-form-urlencoded.'],
+                'error' => ['code' => 'method_not_allowed', 'message' => $this->i18n->trans('api.error.method_not_allowed')],
             ]);
 
             return;
@@ -60,16 +70,18 @@ final class Kernel
         } catch (\JsonException) {
             $this->sendJson(400, [
                 'ok' => false,
-                'error' => ['code' => 'invalid_json', 'message' => 'Body must be valid JSON or form-urlencoded fields.'],
+                'error' => ['code' => 'invalid_json', 'message' => $this->i18n->trans('api.error.invalid_json')],
             ]);
 
             return;
         }
 
+        $this->i18n->setLocale(LocaleResolver::resolve($body, $req));
+
         if (!\array_key_exists('command', $body) || !\is_string($body['command'])) {
             $this->sendJson(400, [
                 'ok' => false,
-                'error' => ['code' => 'missing_command', 'message' => 'Field `command` is required.'],
+                'error' => ['code' => 'missing_command', 'message' => $this->i18n->trans('api.error.missing_command')],
             ]);
 
             return;
@@ -92,7 +104,7 @@ final class Kernel
         if ($handler === null) {
             $this->sendJson(400, [
                 'ok' => false,
-                'error' => ['code' => 'unknown_command', 'message' => 'Unknown command.'],
+                'error' => ['code' => 'unknown_command', 'message' => $this->i18n->trans('api.error.unknown_command')],
             ]);
 
             return;
@@ -122,7 +134,7 @@ final class Kernel
                         'ok' => false,
                         'error' => [
                             'code' => 'database_not_configured',
-                            'message' => 'Database is not configured.',
+                            'message' => $this->i18n->trans('api.error.database_not_configured'),
                         ],
                     ]);
 
@@ -134,9 +146,11 @@ final class Kernel
                 $data = $handler->handle($apiContext);
             }
         } catch (ApiHttpException $e) {
+            $raw = $e->getMessage();
+            $errorMessage = str_starts_with($raw, 'api.') ? $this->i18n->trans($raw) : $raw;
             $this->sendJson($e->httpStatus, [
                 'ok' => false,
-                'error' => ['code' => $e->errorCode, 'message' => $e->getMessage()],
+                'error' => ['code' => $e->errorCode, 'message' => $errorMessage],
             ]);
 
             return;
@@ -144,7 +158,7 @@ final class Kernel
             \error_log('Game API PDO: ' . $e->getMessage());
             $error = [
                 'code' => 'database_error',
-                'message' => 'Database query failed. Apply Phinx migrations so `users` (`public_id`, `status`, …) and `characters` (fights, skill_1..3, etc.) match the code — e.g. `./sail composer migrate` from the project root in WSL.',
+                'message' => $this->i18n->trans('api.error.database_error'),
             ];
             if (self::debugResponsesEnabled()) {
                 $error['detail'] = $e->getMessage();
@@ -174,6 +188,8 @@ final class Kernel
                 'memory_peak_bytes' => memory_get_peak_usage(true),
             ];
         }
+
+        $payload['locale'] = $this->i18n->getLocale();
 
         \header('Content-Type: application/json; charset=utf-8', true, $status);
         echo \json_encode($payload, JSON_THROW_ON_ERROR);

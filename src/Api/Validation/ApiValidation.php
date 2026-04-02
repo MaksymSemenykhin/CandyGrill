@@ -9,16 +9,37 @@ use Symfony\Component\Validator\ConstraintViolationInterface;
 use Symfony\Component\Validator\ConstraintViolationListInterface;
 use Symfony\Component\Validator\Validation;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 final class ApiValidation
 {
     private static ?ValidatorInterface $validator = null;
 
+    private static ?TranslatorInterface $translator = null;
+
+    private static string $translationDomain = 'api';
+
+    public static function configure(?TranslatorInterface $translator, string $translationDomain = 'api'): void
+    {
+        self::$translator = $translator;
+        self::$translationDomain = $translationDomain;
+        self::$validator = null;
+    }
+
     public static function validator(): ValidatorInterface
     {
-        return self::$validator ??= Validation::createValidatorBuilder()
-            ->enableAttributeMapping()
-            ->getValidator();
+        return self::$validator ??= self::buildValidator();
+    }
+
+    private static function buildValidator(): ValidatorInterface
+    {
+        $builder = Validation::createValidatorBuilder()->enableAttributeMapping();
+        if (self::$translator !== null) {
+            $builder->setTranslator(self::$translator);
+            $builder->setTranslationDomain(self::$translationDomain);
+        }
+
+        return $builder->getValidator();
     }
 
     /**

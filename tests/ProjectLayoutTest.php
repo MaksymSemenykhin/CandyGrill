@@ -28,12 +28,18 @@ final class ProjectLayoutTest extends TestCase
     public function testBootstrapPhaseMatchesPublicPlaceholder(): void
     {
         $this->assertTrue(class_exists(Bootstrap::class, true));
-        $this->assertSame('1.4', Bootstrap::PHASE);
+        $this->assertSame('1.5', Bootstrap::PHASE);
     }
 
     public function testDockerComposeFileExists(): void
     {
         $this->assertFileExists($this->root . '/compose.yaml');
+    }
+
+    public function testApiTranslationYamlFilesExist(): void
+    {
+        $this->assertFileExists($this->root . '/translations/api.en.yaml');
+        $this->assertFileExists($this->root . '/translations/api.ru.yaml');
     }
 
     public function testOpenApiSpecAndSwaggerUiFilesExist(): void
@@ -49,8 +55,8 @@ final class ProjectLayoutTest extends TestCase
     public function testOpenApiRegisterOperationIsMinimal(): void
     {
         $yaml = (string) file_get_contents($this->root . '/public/openapi.yaml');
-        $this->assertStringContainsString('version: 1.4.7', $yaml);
-        $this->assertStringContainsString('operationId: registerCharacter', $yaml);
+        $this->assertStringContainsString('version: 1.5.2', $yaml);
+        $this->assertStringContainsString('operationId: postCommand', $yaml);
         $this->assertStringContainsString('additionalProperties: false', $yaml);
         $this->assertStringNotContainsString("ENUM('active','inactive')", $yaml);
     }

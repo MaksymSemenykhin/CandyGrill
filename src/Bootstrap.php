@@ -9,6 +9,6 @@ namespace Game;
  */
 final class Bootstrap
 {
-    /** 1.4 = Part 4 start: `register` (login/me next). */
-    public const PHASE = '1.4';
+    /** 1.5 = TZ #2 `login` (me / combat next). */
+    public const PHASE = '1.5';
 }

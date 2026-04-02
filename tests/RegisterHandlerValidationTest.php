@@ -9,7 +9,7 @@ use Game\Api\Handler\RegisterHandler;
 use Game\Database\DatabaseConnection;
 use Game\Http\ApiContext;
 use Game\Http\IncomingRequest;
-use Game\Service\RegistrationServiceInterface;
+use Game\Service\PlayerServiceInterface;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -54,10 +54,10 @@ final class RegisterHandlerValidationTest extends TestCase
         }
     }
 
-    public function testValidNameCallsRegistrationService(): void
+    public function testValidNameCallsPlayerService(): void
     {
-        $registration = $this->createMock(RegistrationServiceInterface::class);
-        $registration->expects($this->once())
+        $players = $this->createMock(PlayerServiceInterface::class);
+        $players->expects($this->once())
             ->method('register')
             ->with(
                 $this->isInstanceOf(DatabaseConnection::class),
@@ -65,7 +65,7 @@ final class RegisterHandlerValidationTest extends TestCase
             )
             ->willReturn(['player_id' => '11111111-1111-4111-8111-111111111111']);
 
-        $handler = new RegisterHandler($registration);
+        $handler = new RegisterHandler($players);
         $req = new IncomingRequest('POST', '/', [], '{}');
         $ctx = new ApiContext($req, [
             'command' => 'register',

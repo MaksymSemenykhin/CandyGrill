@@ -1,0 +1,22 @@
+# Сообщения API и валидации — русский (по Accept-Language: ru или APP_LOCALE=ru)
+api.bootstrap.message: 'Фаза 1.5: POST JSON `command` — `register`, `login` (`player_id` → токен сессии), `ping`, `health`, session_*. Далее: me / бой.'
+api.error.method_not_allowed: 'Используйте POST с телом application/json или application/x-www-form-urlencoded.'
+api.error.invalid_json: 'Тело запроса должно быть корректным JSON или полями form-urlencoded.'
+api.error.missing_command: 'Поле `command` обязательно.'
+api.error.unknown_command: 'Неизвестная команда.'
+api.error.database_not_configured: 'База данных не настроена.'
+api.error.database_error: 'Ошибка запроса к БД. Примените миграции Phinx, чтобы схема `users` и `characters` совпадала с кодом — например `./sail composer migrate` из корня проекта в WSL.'
+api.error.unknown_player: 'Игрок не найден или учётная запись неактивна.'
+api.error.session_issue_disabled: 'Выдача токенов отключена (только разработка: SESSION_ALLOW_ISSUE=1).'
+api.error.invalid_user_id: 'Поле `user_id` должно быть положительным целым или UUID `player_id` из `register`.'
+
+api.command.required: 'Поле `command` обязательно.'
+api.command.invalid: 'Неизвестная команда.'
+
+api.name.must_be_string: 'Поле `name` должно быть строкой (имя персонажа).'
+api.name.empty: 'Имя персонажа не может быть пустым.'
+api.name.too_long: 'Имя персонажа не длиннее {{ max }} символов.'
+
+api.player_id.must_be_string: 'Поле `player_id` должно быть строкой (UUID из register).'
+api.player_id.empty: 'Поле `player_id` не может быть пустым.'
+api.player_id.invalid_uuid: 'Поле `player_id` должно быть корректным UUID v4.'

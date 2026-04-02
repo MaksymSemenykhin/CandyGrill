@@ -12,7 +12,7 @@ use Game\Repository\UserRepository;
 use Game\Session\SessionService;
 
 /**
- * Temporary token issuance until login (Part 4). Disabled unless SESSION_ALLOW_ISSUE is true.
+ * Dev-only token minting. Production: {@see LoginHandler}. Disabled unless SESSION_ALLOW_ISSUE is true.
  */
 final class SessionIssueHandler implements CommandHandler
 {
@@ -23,7 +23,7 @@ final class SessionIssueHandler implements CommandHandler
             throw new ApiHttpException(
                 403,
                 'session_issue_disabled',
-                'Token issuance is disabled (set SESSION_ALLOW_ISSUE=1 in development only).',
+                'api.error.session_issue_disabled',
             );
         }
 
@@ -60,7 +60,7 @@ final class SessionIssueHandler implements CommandHandler
         throw new ApiHttpException(
             400,
             'invalid_user_id',
-            'Field `user_id` must be a positive integer or a `player_id` UUID from `register`.',
+            'api.error.invalid_user_id',
         );
     }
 

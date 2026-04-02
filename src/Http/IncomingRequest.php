@@ -8,12 +8,14 @@ final class IncomingRequest
 {
     /**
      * @param array<string, string> $headers Lowercased header names
+     * @param array<string, mixed>  $query   Query string (?locale=ru)
      */
     public function __construct(
         public readonly string $method,
         public readonly string $path,
         public readonly array $headers,
         public readonly string $rawBody,
+        public readonly array $query = [],
     ) {
     }
 
@@ -54,7 +56,17 @@ final class IncomingRequest
 
         $body = \file_get_contents('php://input');
 
-        return new self($method, $path, $headers, \is_string($body) ? $body : '');
+        $query = [];
+        $qs = \parse_url($uri, PHP_URL_QUERY);
+        if (\is_string($qs) && $qs !== '') {
+            \parse_str($qs, $parsed);
+            if (\is_array($parsed)) {
+                /** @var array<string, mixed> $query */
+                $query = $parsed;
+            }
+        }
+
+        return new self($method, $path, $headers, \is_string($body) ? $body : '', $query);
     }
 
     public function header(string $name): ?string

@@ -8,7 +8,7 @@ use Game\Config\DatabaseConfig;
 use Game\Database\PdoFactory;
 use PDO;
 
-final class UserRepository
+final class UserRepository implements ActivePlayerLookup
 {
     private const UUID_V4_REGEX = '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D';
 
@@ -67,6 +67,26 @@ final class UserRepository
         }
         $stmt = $this->pdo->prepare('SELECT id FROM users WHERE public_id = ? LIMIT 1');
         $stmt->execute([strtolower($publicId)]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!\is_array($row) || !isset($row['id'])) {
+            return null;
+        }
+
+        return (int) $row['id'];
+    }
+
+    /**
+     * TZ login: only `active` users receive a session.
+     */
+    public function findActiveInternalIdByPublicId(string $publicId): ?int
+    {
+        if (!self::isValidUuidV4String($publicId)) {
+            return null;
+        }
+        $stmt = $this->pdo->prepare(
+            'SELECT id FROM users WHERE public_id = ? AND status = ? LIMIT 1',
+        );
+        $stmt->execute([strtolower($publicId), 'active']);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!\is_array($row) || !isset($row['id'])) {
             return null;

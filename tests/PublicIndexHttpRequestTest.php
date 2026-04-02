@@ -148,12 +148,12 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.4', $data['stage']);
+        $this->assertSame('1.5', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertIsString($data['message']);
         $this->assertStringContainsStringIgnoringCase('ping', $data['message']);
         $this->assertStringContainsStringIgnoringCase('POST', $data['message']);
-        $this->assertProfileShape($data['profile']);
+        $this->assertApiEnvelope($data);
     }
 
     /**
@@ -165,10 +165,111 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.4', $data['stage']);
+        $this->assertSame('1.5', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertStringContainsStringIgnoringCase('command', (string) $data['message']);
-        $this->assertProfileShape($data['profile']);
+        $this->assertApiEnvelope($data);
+    }
+
+    /**
+     * @throws \JsonException
+     */
+    public function testGetRootWithQueryLocaleRu(): void
+    {
+        $raw = $this->httpGet('/?locale=ru');
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($data['ok']);
+        $this->assertApiEnvelope($data, 'ru');
+        $this->assertStringContainsString('Фаза', (string) $data['message']);
+    }
+
+    /**
+     * @throws \JsonException
+     */
+    public function testGetRootWithQueryLangRu(): void
+    {
+        $raw = $this->httpGet('/?lang=ru');
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($data['ok']);
+        $this->assertApiEnvelope($data, 'ru');
+        $this->assertStringContainsString('Фаза', (string) $data['message']);
+    }
+
+    /**
+     * @throws \JsonException
+     */
+    public function testGetRootWithAcceptLanguageRu(): void
+    {
+        $raw = $this->httpGetWithHeaders('/', ['Accept-Language' => 'ru-RU,en;q=0.8']);
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($data['ok']);
+        $this->assertApiEnvelope($data, 'ru');
+        $this->assertStringContainsString('Фаза', (string) $data['message']);
+    }
+
+    /**
+     * Query `locale` applies to POST before the body is parsed (e.g. invalid JSON errors).
+     *
+     * @throws \JsonException
+     */
+    public function testPostInvalidJsonUsesQueryLocaleRu(): void
+    {
+        $raw = $this->httpPostRaw('/?locale=ru', "{not json");
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertFalse($data['ok']);
+        $this->assertSame('invalid_json', $data['error']['code']);
+        $this->assertApiEnvelope($data, 'ru');
+        $this->assertStringStartsWith('Тело запроса', (string) $data['error']['message']);
+    }
+
+    /**
+     * @throws \JsonException
+     */
+    public function testPostPingWithQueryLocaleRu(): void
+    {
+        $raw = $this->httpPostJson('/?locale=ru', ['command' => 'ping']);
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($data['ok']);
+        $this->assertApiEnvelope($data, 'ru');
+        $this->assertTrue($data['data']['pong']);
+    }
+
+    /**
+     * @throws \JsonException
+     */
+    public function testPostPingWithLangAliasInBody(): void
+    {
+        $raw = $this->httpPostJson('/', ['command' => 'ping', 'lang' => 'ru']);
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($data['ok']);
+        $this->assertApiEnvelope($data, 'ru');
+        $this->assertTrue($data['data']['pong']);
+    }
+
+    /**
+     * JSON `locale` / `lang` wins over query (same as {@see LocaleResolverTest::testLocaleKeyPreferredOverLangKeyInBody}).
+     *
+     * @throws \JsonException
+     */
+    public function testPostPingBodyLocaleOverridesQueryLang(): void
+    {
+        $raw = $this->httpPostJson('/?lang=ru', ['command' => 'ping', 'locale' => 'en']);
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($data['ok']);
+        $this->assertApiEnvelope($data, 'en');
+    }
+
+    /**
+     * @throws \JsonException
+     */
+    public function testPostUnknownCommandUsesQueryLocaleForErrorMessage(): void
+    {
+        $raw = $this->httpPostJson('/?locale=ru', ['command' => 'not_implemented_yet']);
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertFalse($data['ok']);
+        $this->assertSame('unknown_command', $data['error']['code']);
+        $this->assertApiEnvelope($data, 'ru');
+        $this->assertSame('Неизвестная команда.', $data['error']['message']);
     }
 
     /**
@@ -178,8 +279,9 @@ final class PublicIndexHttpRequestTest extends TestCase
     {
         $raw = $this->httpGet('/openapi.yaml');
         $this->assertStringContainsString('openapi: 3.0.3', $raw);
-        $this->assertStringContainsString('operationId: registerCharacter', $raw);
-        $this->assertStringContainsString('version: 1.4.7', $raw);
+        $this->assertStringContainsString('operationId: postCommand', $raw);
+        $this->assertStringContainsString('operationId: getRoot', $raw);
+        $this->assertStringContainsString('version: 1.5.2', $raw);
         $this->assertStringContainsString('additionalProperties: false', $raw);
     }
 
@@ -207,7 +309,19 @@ final class PublicIndexHttpRequestTest extends TestCase
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
         $this->assertTrue($data['data']['pong']);
-        $this->assertProfileShape($data['profile']);
+        $this->assertApiEnvelope($data);
+    }
+
+    /**
+     * @throws \JsonException
+     */
+    public function testPostPingWithJsonBodyLocaleRu(): void
+    {
+        $raw = $this->httpPostJson('/', ['command' => 'ping', 'locale' => 'ru']);
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($data['ok']);
+        $this->assertApiEnvelope($data, 'ru');
+        $this->assertTrue($data['data']['pong']);
     }
 
     /**
@@ -227,7 +341,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         if ($data['data']['database']['configured'] === false) {
             $this->assertFalse($data['data']['database']['reachable']);
         }
-        $this->assertProfileShape($data['profile']);
+        $this->assertApiEnvelope($data);
     }
 
     /**
@@ -239,7 +353,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertFalse($data['ok']);
         $this->assertSame('unknown_command', $data['error']['code']);
-        $this->assertProfileShape($data['profile']);
+        $this->assertApiEnvelope($data);
     }
 
     /**
@@ -251,7 +365,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
         $this->assertFalse($data['data']['authenticated']);
-        $this->assertProfileShape($data['profile']);
+        $this->assertApiEnvelope($data);
     }
 
     /**
@@ -266,6 +380,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         $token = $issue['data']['access_token'];
         $this->assertIsString($token);
         $this->assertSame(64, strlen($token));
+        $this->assertApiEnvelope($issue);
 
         // Built-in `php -S` may not expose custom headers to PHP; `access_token` in JSON is also accepted for resolution.
         $rawStatus = $this->httpPostJson('/', [
@@ -276,6 +391,17 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertTrue($status['ok'] ?? false, $rawStatus);
         $this->assertTrue($status['data']['authenticated'] ?? false, $rawStatus);
         $this->assertSame($issue['data']['user_id'], $status['data']['user_id']);
+        $this->assertApiEnvelope($status);
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function assertApiEnvelope(array $data, string $expectedLocale = 'en'): void
+    {
+        $this->assertArrayHasKey('locale', $data);
+        $this->assertSame($expectedLocale, $data['locale']);
+        $this->assertProfileShape($data['profile']);
     }
 
     /**
@@ -297,13 +423,27 @@ final class PublicIndexHttpRequestTest extends TestCase
 
     private function httpGet(string $path): string
     {
+        return $this->httpGetWithHeaders($path, []);
+    }
+
+    /**
+     * @param array<string, string> $headers Header name => value (e.g. Accept-Language)
+     */
+    private function httpGetWithHeaders(string $path, array $headers): string
+    {
         $url = self::$baseUrl . $path;
-        $ctx = stream_context_create([
-            'http' => [
-                'timeout' => 5.0,
-                'ignore_errors' => true,
-            ],
-        ]);
+        $http = [
+            'timeout' => 5.0,
+            'ignore_errors' => true,
+        ];
+        if ($headers !== []) {
+            $lines = [];
+            foreach ($headers as $name => $value) {
+                $lines[] = $name . ': ' . $value;
+            }
+            $http['header'] = implode("\r\n", $lines) . "\r\n";
+        }
+        $ctx = stream_context_create(['http' => $http]);
         $raw = file_get_contents($url, false, $ctx);
         $this->assertNotFalse($raw, 'HTTP GET failed: ' . $url);
 
@@ -316,6 +456,22 @@ final class PublicIndexHttpRequestTest extends TestCase
      */
     private function httpPostJson(string $path, array $body, array $extraHeaders = []): string
     {
+        return $this->httpPostWithBody($path, json_encode($body, JSON_THROW_ON_ERROR), $extraHeaders);
+    }
+
+    /**
+     * @param array<string, string> $extraHeaders
+     */
+    private function httpPostRaw(string $path, string $rawBody, array $extraHeaders = []): string
+    {
+        return $this->httpPostWithBody($path, $rawBody, $extraHeaders);
+    }
+
+    /**
+     * @param array<string, string> $extraHeaders
+     */
+    private function httpPostWithBody(string $path, string $body, array $extraHeaders = []): string
+    {
         $url = self::$baseUrl . $path;
         $headerLines = ['Content-Type: application/json'];
         foreach ($extraHeaders as $name => $value) {
@@ -325,7 +481,7 @@ final class PublicIndexHttpRequestTest extends TestCase
             'http' => [
                 'method' => 'POST',
                 'header' => implode("\r\n", $headerLines) . "\r\n",
-                'content' => json_encode($body, JSON_THROW_ON_ERROR),
+                'content' => $body,
                 'timeout' => 5.0,
                 'ignore_errors' => true,
             ],

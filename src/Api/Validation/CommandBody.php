@@ -14,8 +14,8 @@ final readonly class CommandBody
 {
     public function __construct(
         #[Assert\Sequentially([
-            new Assert\NotBlank(message: 'Field `command` is required.', payload: ['api_error' => 'missing_command']),
-            new Assert\Regex(pattern: '/^[a-z0-9_]+$/', message: 'Unknown command.', payload: ['api_error' => 'unknown_command']),
+            new Assert\NotBlank(message: 'api.command.required', payload: ['api_error' => 'missing_command']),
+            new Assert\Regex(pattern: '/^[a-z0-9_]+$/', message: 'api.command.invalid', payload: ['api_error' => 'unknown_command']),
         ])]
         public string $command,
     ) {

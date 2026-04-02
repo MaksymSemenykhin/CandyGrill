@@ -114,11 +114,12 @@ Phase 1.1+ — JSON command API (incremental)
 --------------------------------------------
 Built in small steps so you can review each slice.
 
-**Текущий маркер:** `Bootstrap::PHASE` = **1.4** (Part 4; дальше `login` / `me`).
+**Текущий маркер:** `Bootstrap::PHASE` = **1.5** (`login` по ТЗ; дальше `me` / бой).
 
 ### Part 1 (база API)
 
 * **`Game\Api\Kernel`** + **`Game\Http\IncomingRequest`**.
+* **Локализация:** Symfony **`symfony/translation`**, **`translations/api.*.yaml`**; язык: тело **`locale`** / **`lang`**, query **`?locale=`**, **`Accept-Language`**, **`APP_LOCALE`**. В ответе поле **`locale`**. Подробнее: **`docs/technical-spec.md`**.
 * **GET** `/` или `/index.php` — JSON: `ok`, `stage`, `message`, **`profile`** (`time_ms`, `memory_bytes`, `memory_peak_bytes`).
 * **POST** `/`, `application/json`, поле **`command`** (`a-z`, `0-9`, `_`).
 * Команда проверяется **по файлу** в `src/Api/Handler/{Studly}Handler.php` (`ping` → `PingHandler`), класс реализует `CommandHandler`.
@@ -159,7 +160,8 @@ curl -sS -X POST "http://127.0.0.1:8080/" \
 ### Part 4 (в процессе)
 
 * **Официальное ТЗ:** **`docs/assignment-original-spec.md`**, сверка **`docs/technical-spec.md`**.
-* **Дальше:** `login`, `me`.
+* **`login`:** **`player_id`** (UUID из `register`) → **`session_id`** / **`access_token`** (Bearer). См. **`public/openapi.yaml`**.
+* **Дальше:** `me`, бой (ТЗ п.3–6).
 
 ### OpenAPI / Swagger UI
 
@@ -169,7 +171,7 @@ curl -sS -X POST "http://127.0.0.1:8080/" \
 
 ### Дальше по плану
 
-* Part 4 — завершить `login`, `me` (токен после логина вместо dev-`session_issue` там, где нужно).
+* Part 4 — `me`, затем бой; в проде токен через **`login`**, не **`session_issue`**.
 
 Later phases
 ------------

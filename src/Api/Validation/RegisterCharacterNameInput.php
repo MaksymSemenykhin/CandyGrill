@@ -23,7 +23,7 @@ final readonly class RegisterCharacterNameInput
     public function validate(ExecutionContextInterface $context, mixed $payload): void
     {
         if (!\is_string($this->name)) {
-            $context->buildViolation('Field `name` must be a string (character name).')
+            $context->buildViolation('api.name.must_be_string')
                 ->atPath('name')
                 ->setCode('invalid_request')
                 ->addViolation();
@@ -33,7 +33,7 @@ final readonly class RegisterCharacterNameInput
 
         $trimmed = trim($this->name);
         if ($trimmed === '') {
-            $context->buildViolation('Character `name` must be non-empty.')
+            $context->buildViolation('api.name.empty')
                 ->atPath('name')
                 ->setCode('invalid_name')
                 ->addViolation();
@@ -43,7 +43,8 @@ final readonly class RegisterCharacterNameInput
 
         $len = function_exists('mb_strlen') ? mb_strlen($trimmed, 'UTF-8') : strlen($trimmed);
         if ($len > self::MAX_CODEPOINTS) {
-            $context->buildViolation('Character `name` must be at most ' . self::MAX_CODEPOINTS . ' characters.')
+            $context->buildViolation('api.name.too_long')
+                ->setParameter('{{ max }}', (string) self::MAX_CODEPOINTS)
                 ->atPath('name')
                 ->setCode('invalid_name')
                 ->addViolation();

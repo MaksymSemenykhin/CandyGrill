@@ -1,0 +1,22 @@
+# API response and validation messages — English (default / fallback)
+api.bootstrap.message: 'Phase 1.5: POST JSON `command` — `register`, `login` (`player_id` → session token), `ping`, `health`, session_*. Next: me / combat.'
+api.error.method_not_allowed: 'Use POST with application/json or application/x-www-form-urlencoded.'
+api.error.invalid_json: 'Body must be valid JSON or form-urlencoded fields.'
+api.error.missing_command: 'Field `command` is required.'
+api.error.unknown_command: 'Unknown command.'
+api.error.database_not_configured: 'Database is not configured.'
+api.error.database_error: 'Database query failed. Apply Phinx migrations so `users` (`public_id`, `status`, …) and `characters` (fights, skill_1..3, etc.) match the code — e.g. `./sail composer migrate` from the project root in WSL.'
+api.error.unknown_player: 'Unknown or inactive player.'
+api.error.session_issue_disabled: 'Token issuance is disabled (set SESSION_ALLOW_ISSUE=1 in development only).'
+api.error.invalid_user_id: 'Field `user_id` must be a positive integer or a `player_id` UUID from `register`.'
+
+api.command.required: 'Field `command` is required.'
+api.command.invalid: 'Unknown command.'
+
+api.name.must_be_string: 'Field `name` must be a string (character name).'
+api.name.empty: 'Character `name` must be non-empty.'
+api.name.too_long: 'Character `name` must be at most {{ max }} characters.'
+
+api.player_id.must_be_string: 'Field `player_id` must be a string (UUID from register).'
+api.player_id.empty: 'Field `player_id` must be non-empty.'
+api.player_id.invalid_uuid: 'Field `player_id` must be a valid UUID v4.'

@@ -4,15 +4,23 @@ declare(strict_types=1);
 
 namespace Game\Service;
 
+use Game\Api\ApiHttpException;
 use Game\Database\DatabaseConnection;
+use Game\Repository\ActivePlayerLookup;
+use Game\Session\SessionService;
+use Random\RandomException;
 use Throwable;
 
-/** TZ: создать анонимного игрока и персонажа; скиллы 0–50 задаёт сервер. */
-final class RegistrationService implements RegistrationServiceInterface
+final class PlayerService implements PlayerServiceInterface
 {
     private const TZ_SKILL_MIN = 0;
 
     private const TZ_SKILL_MAX = 50;
+
+    public function __construct(
+        private readonly SessionService $sessions,
+    ) {
+    }
 
     /**
      * @return array{player_id: string}
@@ -45,9 +53,34 @@ final class RegistrationService implements RegistrationServiceInterface
     }
 
     /**
+     * @throws \JsonException
+     */
+    public function login(ActivePlayerLookup $lookup, string $normalizedPlayerId): array
+    {
+        $internalId = $lookup->findActiveInternalIdByPublicId($normalizedPlayerId);
+        if ($internalId === null) {
+            throw new ApiHttpException(
+                401,
+                'unknown_player',
+                'api.error.unknown_player',
+            );
+        }
+
+        $issued = $this->sessions->issueToken($internalId);
+
+        return [
+            'session_id' => $issued['token'],
+            'access_token' => $issued['token'],
+            'token_type' => 'Bearer',
+            'expires_in' => $issued['expires_in'],
+        ];
+    }
+
+    /**
      * По ТЗ при создании персонажа три скилла — независимые случайные значения от 0 до 50 включительно.
      *
      * @return array{int, int, int}
+     * @throws RandomException
      */
     private function rollTzSkills(): array
     {

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Game\Database;
 
+use Game\Repository\ActivePlayerLookup;
 use Game\Repository\CharacterRepository;
 use Game\Repository\UserRepository;
 use PDO;
@@ -28,6 +29,11 @@ class DatabaseConnection
     public function users(): UserRepository
     {
         return $this->users ??= new UserRepository($this->pdo);
+    }
+
+    public function activePlayers(): ActivePlayerLookup
+    {
+        return $this->users();
     }
 
     public function characters(): CharacterRepository
