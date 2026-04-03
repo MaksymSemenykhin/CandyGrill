@@ -7,12 +7,17 @@ namespace Game\MatchPool;
 use Game\Config\MatchPoolConfig;
 use Game\Config\SessionConfig;
 
-/** Match candidates by level; JSON file + flock or Memcached ({@see MatchPoolConfig}). */
+/**
+ * Match candidates by level; JSON file + flock or Memcached ({@see MatchPoolConfig}).
+ *
+ * @phpstan-type PoolEntry array{user_id: int, player_id: string, name: string, level: int, until: int}
+ * @phpstan-type PoolEntryList list<PoolEntry>
+ */
 final class MatchPool
 {
     private static ?self $instance = null;
 
-    /** @var list<array{user_id: int, player_id: string, name: string, level: int, until: int}> */
+    /** @var PoolEntryList */
     private array $processEntries = [];
 
     public function __construct(
@@ -103,7 +108,7 @@ final class MatchPool
     }
 
     /**
-     * @param callable(array): array $mutator
+     * @param callable(PoolEntryList): PoolEntryList $mutator
      */
     private function mutateEntries(callable $mutator): void
     {
@@ -124,7 +129,7 @@ final class MatchPool
     }
 
     /**
-     * @param callable(array): array $mutator
+     * @param callable(PoolEntryList): PoolEntryList $mutator
      */
     private function mutateFile(string $path, callable $mutator): void
     {
@@ -158,7 +163,7 @@ final class MatchPool
     }
 
     /**
-     * @param callable(array): array $mutator
+     * @param callable(PoolEntryList): PoolEntryList $mutator
      */
     private function mutateMemcached(callable $mutator): void
     {
@@ -178,7 +183,7 @@ final class MatchPool
     }
 
     /**
-     * @return list<array{user_id: int, player_id: string, name: string, level: int, until: int}>
+     * @return PoolEntryList
      */
     private static function decodeEntries(string $raw): array
     {
@@ -194,7 +199,7 @@ final class MatchPool
         if (!\is_array($data)) {
             return [];
         }
-        /** @var list<array{user_id: int, player_id: string, name: string, level: int, until: int}> $out */
+        /** @var PoolEntryList $out */
         $out = [];
         foreach ($data as $row) {
             if (!\is_array($row)) {
@@ -219,8 +224,8 @@ final class MatchPool
     }
 
     /**
-     * @param list<array{user_id: int, player_id: string, name: string, level: int, until: int}> $entries
-     * @return list<array{user_id: int, player_id: string, name: string, level: int, until: int}>
+     * @param PoolEntryList $entries
+     * @return PoolEntryList
      */
     private static function pruneExpired(array $entries, int $now): array
     {
@@ -228,8 +233,8 @@ final class MatchPool
     }
 
     /**
-     * @param list<array{user_id: int, player_id: string, name: string, level: int, until: int}> $entries
-     * @return list<array{user_id: int, player_id: string, name: string, level: int, until: int}>
+     * @param PoolEntryList $entries
+     * @return PoolEntryList
      */
     private static function dropUser(array $entries, int $userId): array
     {
