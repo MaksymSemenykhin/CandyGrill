@@ -8,6 +8,8 @@ use Game\Api\Validation\ApiValidation;
 use Game\Api\Validation\LoginPlayerIdInput;
 use Game\Database\DatabaseConnection;
 use Game\Http\ApiContext;
+use Game\Config\MatchPoolConfig;
+use Game\MatchPool\MatchPool;
 use Game\Service\PlayerService;
 use Game\Service\PlayerServiceInterface;
 use Game\Session\SessionService;
@@ -31,7 +33,24 @@ final readonly class LoginHandler implements RequiresDatabase
         ApiValidation::throwUnlessValid(ApiValidation::validator()->validate($input));
 
         $service = $this->playerService ?? new PlayerService(SessionService::fromEnvironment());
+        $result = $service->login($db->activePlayers(), $input->normalizedPlayerId());
 
-        return $service->login($db->activePlayers(), $input->normalizedPlayerId());
+        if (MatchPoolConfig::fromEnvironment()->enabled) {
+            $uid = $db->users()->findActiveInternalIdByPublicId($input->normalizedPlayerId());
+            if ($uid !== null) {
+                $char = $db->characters()->findNameAndLevelByUserId($uid);
+                if ($char !== null) {
+                    MatchPool::fromEnvironment()->register(
+                        $uid,
+                        $input->normalizedPlayerId(),
+                        $char['name'],
+                        $char['level'],
+                        $result['expires_in'],
+                    );
+                }
+            }
+        }
+
+        return $result;
     }
 }

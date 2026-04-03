@@ -8,7 +8,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 /**
- * Поле `name` из тела register: строка UTF-8, не пустое после trim, длина по кодовым пунктам ≤ 64.
+ * `name` from register body: UTF-8 string, non-empty after trim, length ≤ 64 Unicode code points.
  */
 final readonly class RegisterCharacterNameInput
 {
@@ -51,7 +51,7 @@ final readonly class RegisterCharacterNameInput
         }
     }
 
-    /** Вызывать только после успешной валидации. */
+    /** Call only after validation passes. */
     public function trimmedCharacterName(): string
     {
         return trim((string) $this->name);

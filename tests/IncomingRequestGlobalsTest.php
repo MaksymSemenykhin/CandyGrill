@@ -46,6 +46,22 @@ final class IncomingRequestGlobalsTest extends TestCase
         $this->assertSame('ru', LocaleResolver::resolve(null, $req));
     }
 
+    public function testAuthorizationHeaderFromRedirectHttpAuthorization(): void
+    {
+        $_SERVER['REQUEST_METHOD'] = 'POST';
+        $_SERVER['REQUEST_URI'] = '/';
+        unset($_SERVER['HTTP_AUTHORIZATION'], $_SERVER['HTTP_X_SESSION_TOKEN']);
+        $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] = 'Bearer abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789';
+        $_GET = [];
+
+        $req = IncomingRequest::fromGlobals();
+
+        $this->assertSame(
+            'Bearer abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789',
+            $req->header('Authorization'),
+        );
+    }
+
     public function testRedirectQueryStringUsedWhenUriQueryMissing(): void
     {
         $_SERVER['REQUEST_METHOD'] = 'GET';

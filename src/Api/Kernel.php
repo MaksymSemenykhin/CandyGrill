@@ -19,7 +19,7 @@ use Game\I18n\LocaleResolver;
 use Game\Session\SessionService;
 
 /**
- * POST `command`: JSON или `x-www-form-urlencoded` — `Api/Handler/{Studly}Handler.php` + {@see CommandHandler}.
+ * POST `command`: JSON or `x-www-form-urlencoded` — `Api/Handler/{Studly}Handler.php` + {@see CommandHandler}.
  */
 final class Kernel
 {
@@ -109,12 +109,13 @@ final class Kernel
         }
 
         $sessionService = SessionService::fromEnvironment();
-        $authHeader = $req->header('Authorization');
-        $sessionToken = $req->header('X-Session-Token');
-        if (($authHeader === null || $authHeader === '') && $sessionToken !== null && $sessionToken !== '') {
-            $authHeader = 'Bearer ' . $sessionToken;
+        $session = null;
+        foreach (self::bearerHeaderCandidates($req) as $candidate) {
+            $session = $sessionService->resolveFromBearer($candidate);
+            if ($session !== null) {
+                break;
+            }
         }
-        $session = $sessionService->resolveFromBearer($authHeader);
         if ($session === null) {
             $bodyToken = null;
             foreach (['session_id', 'access_token'] as $bodyTokenKey) {
@@ -125,7 +126,7 @@ final class Kernel
                 }
             }
             if ($bodyToken !== null) {
-                $session = $sessionService->resolveFromBearer('Bearer ' . $bodyToken);
+                $session = $sessionService->resolveFromBearer('Bearer ' . \trim($bodyToken));
             }
         }
 
@@ -215,6 +216,30 @@ final class Kernel
         }
 
         return new $class();
+    }
+
+    /**
+     * @return list<string>
+     */
+    private static function bearerHeaderCandidates(IncomingRequest $req): array
+    {
+        $raw = [];
+        $authHeader = $req->header('Authorization');
+        if (\is_string($authHeader)) {
+            $authHeader = \trim($authHeader);
+            if ($authHeader !== '') {
+                $raw[] = $authHeader;
+            }
+        }
+        $sessionToken = $req->header('X-Session-Token');
+        if (\is_string($sessionToken)) {
+            $sessionToken = \trim($sessionToken);
+            if ($sessionToken !== '') {
+                $raw[] = 'Bearer ' . $sessionToken;
+            }
+        }
+
+        return \array_values(\array_unique($raw));
     }
 
     /**

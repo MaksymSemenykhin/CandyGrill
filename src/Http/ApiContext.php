@@ -12,7 +12,7 @@ namespace Game\Http;
 final readonly class ApiContext
 {
     /**
-     * @param BodyArray $body Распарсенное тело (JSON или поля формы).
+     * @param BodyArray $body Parsed body (JSON or form fields).
      */
     public function __construct(
         public IncomingRequest $request,

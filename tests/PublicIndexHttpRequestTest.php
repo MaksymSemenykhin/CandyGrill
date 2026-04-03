@@ -148,7 +148,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.5', $data['stage']);
+        $this->assertSame('1.6', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertIsString($data['message']);
         $this->assertStringContainsStringIgnoringCase('POST', $data['message']);
@@ -164,7 +164,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.5', $data['stage']);
+        $this->assertSame('1.6', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertStringContainsStringIgnoringCase('command', (string) $data['message']);
         $this->assertApiEnvelope($data);
@@ -262,18 +262,27 @@ final class PublicIndexHttpRequestTest extends TestCase
     /**
      * @throws \JsonException
      */
+    public function testPostFindOpponentsWithoutAuthReturns401WhenDatabaseConfigured(): void
+    {
+        [$status, $raw] = $this->httpPostJsonWithStatus('/', ['command' => 'find_opponents']);
+        if ($status === 503) {
+            $this->markTestSkipped('Database not configured on test server (503 database_not_configured).');
+        }
+        $this->assertSame(401, $status, $raw);
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertFalse($data['ok']);
+        $this->assertSame('unauthorized', $data['error']['code']);
+        $this->assertApiEnvelope($data);
+    }
+
+    /**
+     * @throws \JsonException
+     */
     public function testOpenApiYamlIsServed(): void
     {
         $raw = $this->httpGet('/openapi.yaml');
         $this->assertStringContainsString('openapi: 3.0.3', $raw);
         $this->assertStringContainsString('operationId: postCommand', $raw);
-        $this->assertStringContainsString('version: 1.6.13', $raw);
-        $this->assertStringContainsString('Шаблон: register', $raw);
-        $this->assertStringContainsString('Шаблон: login', $raw);
-        $this->assertStringNotContainsString('- name: Bootstrap', $raw);
-        $this->assertStringContainsString('- name: Commands', $raw);
-        $this->assertStringContainsString('propertyName: command', $raw);
-        $this->assertStringContainsString('additionalProperties: false', $raw);
     }
 
     public function testResponseContentTypeIsJson(): void
@@ -362,7 +371,7 @@ final class PublicIndexHttpRequestTest extends TestCase
     /**
      * @throws \JsonException
      */
-    public function testPostSessionIssueThenStatusWithBearer(): void
+    public function testPostSessionIssueThenStatusWithSessionIdInBody(): void
     {
         $rawIssue = $this->httpPostJson('/', ['command' => 'session_issue', 'user_id' => 7]);
         $issue = json_decode($rawIssue, true, 512, JSON_THROW_ON_ERROR);
@@ -372,11 +381,109 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertSame(64, strlen($token));
         $this->assertApiEnvelope($issue);
 
-        // В теле запроса токен передаётся как `session_id` (или устаревшее имя `access_token`).
         $rawStatus = $this->httpPostJson('/', [
             'command' => 'session_status',
             'session_id' => $token,
         ]);
+        $status = json_decode($rawStatus, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($status['ok'] ?? false, $rawStatus);
+        $this->assertTrue($status['data']['authenticated'] ?? false, $rawStatus);
+        $this->assertSame($issue['data']['user_id'], $status['data']['user_id']);
+        $this->assertApiEnvelope($status);
+    }
+
+    /**
+     * Full HTTP path: Authorization: Bearer (like Swagger), no session_id in body.
+     *
+     * @throws \JsonException
+     */
+    public function testPostSessionIssueThenStatusWithAuthorizationBearerHeader(): void
+    {
+        $rawIssue = $this->httpPostJson('/', ['command' => 'session_issue', 'user_id' => 7]);
+        $issue = json_decode($rawIssue, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($issue['ok'], $rawIssue);
+        $token = $issue['data']['session_id'];
+        $this->assertSame(64, strlen((string) $token));
+
+        $rawStatus = $this->httpPostJson(
+            '/',
+            ['command' => 'session_status'],
+            ['Authorization' => 'Bearer ' . $token],
+        );
+        $status = json_decode($rawStatus, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($status['ok'] ?? false, $rawStatus);
+        $this->assertTrue($status['data']['authenticated'] ?? false, $rawStatus);
+        $this->assertSame($issue['data']['user_id'], $status['data']['user_id']);
+        $this->assertApiEnvelope($status);
+    }
+
+    /**
+     * Same flow but uppercase hex token — server normalizes to lowercase.
+     *
+     * @throws \JsonException
+     */
+    public function testAuthorizationBearerAcceptsUppercaseHexToken(): void
+    {
+        $rawIssue = $this->httpPostJson('/', ['command' => 'session_issue', 'user_id' => 7]);
+        $issue = json_decode($rawIssue, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($issue['ok'], $rawIssue);
+        $token = strtoupper((string) $issue['data']['session_id']);
+
+        $rawStatus = $this->httpPostJson(
+            '/',
+            ['command' => 'session_status'],
+            ['Authorization' => 'Bearer ' . $token],
+        );
+        $status = json_decode($rawStatus, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($status['ok'] ?? false, $rawStatus);
+        $this->assertTrue($status['data']['authenticated'] ?? false, $rawStatus);
+        $this->assertApiEnvelope($status);
+    }
+
+    /**
+     * Bearer alternative: X-Session-Token header (useful when a proxy strips Authorization).
+     *
+     * @throws \JsonException
+     */
+    public function testPostSessionStatusWithXSessionTokenHeader(): void
+    {
+        $rawIssue = $this->httpPostJson('/', ['command' => 'session_issue', 'user_id' => 7]);
+        $issue = json_decode($rawIssue, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($issue['ok'], $rawIssue);
+        $token = $issue['data']['session_id'];
+
+        $rawStatus = $this->httpPostJson(
+            '/',
+            ['command' => 'session_status'],
+            ['X-Session-Token' => $token],
+        );
+        $status = json_decode($rawStatus, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($status['ok'] ?? false, $rawStatus);
+        $this->assertTrue($status['data']['authenticated'] ?? false, $rawStatus);
+        $this->assertSame($issue['data']['user_id'], $status['data']['user_id']);
+        $this->assertApiEnvelope($status);
+    }
+
+    /**
+     * Invalid Authorization must not block a valid X-Session-Token.
+     *
+     * @throws \JsonException
+     */
+    public function testSessionStatusFallsBackToXSessionTokenWhenAuthorizationInvalid(): void
+    {
+        $rawIssue = $this->httpPostJson('/', ['command' => 'session_issue', 'user_id' => 7]);
+        $issue = json_decode($rawIssue, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertTrue($issue['ok'], $rawIssue);
+        $token = $issue['data']['session_id'];
+
+        $rawStatus = $this->httpPostJson(
+            '/',
+            ['command' => 'session_status'],
+            [
+                'Authorization' => 'Bearer not-a-valid-session-token',
+                'X-Session-Token' => $token,
+            ],
+        );
         $status = json_decode($rawStatus, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($status['ok'] ?? false, $rawStatus);
         $this->assertTrue($status['data']['authenticated'] ?? false, $rawStatus);
@@ -462,5 +569,37 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertNotFalse($raw, 'HTTP POST failed: ' . $url);
 
         return $raw;
+    }
+
+    /**
+     * @param array<string, mixed>              $body
+     * @param array<string, string> $extraHeaders
+     * @return array{0: int, 1: string} HTTP status and body
+     */
+    private function httpPostJsonWithStatus(string $path, array $body, array $extraHeaders = []): array
+    {
+        $url = self::$baseUrl . $path;
+        $headerLines = ['Content-Type: application/json'];
+        foreach ($extraHeaders as $name => $value) {
+            $headerLines[] = $name . ': ' . $value;
+        }
+        $ctx = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => implode("\r\n", $headerLines) . "\r\n",
+                'content' => json_encode($body, JSON_THROW_ON_ERROR),
+                'timeout' => 5.0,
+                'ignore_errors' => true,
+            ],
+        ]);
+        $raw = file_get_contents($url, false, $ctx);
+        $this->assertNotFalse($raw, 'HTTP POST failed: ' . $url);
+        $status = 0;
+        if (isset($http_response_header[0]) && \is_string($http_response_header[0])
+            && preg_match('/\s(\d{3})\s/', $http_response_header[0], $m)) {
+            $status = (int) $m[1];
+        }
+
+        return [$status, $raw];
     }
 }

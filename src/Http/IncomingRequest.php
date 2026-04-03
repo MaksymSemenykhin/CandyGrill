@@ -37,21 +37,30 @@ final class IncomingRequest
                 $raw = [];
             }
             foreach ($raw as $name => $value) {
-                $headers[\strtolower((string) $name)] = (string) $value;
+                $v = \trim((string) $value);
+                if ($v === '') {
+                    continue;
+                }
+                $headers[\strtolower((string) $name)] = $v;
             }
         }
 
         // Built-in server / some SAPIs omit headers from getallheaders(); align with CGI `HTTP_*` entries.
         foreach (
             [
-                'authorization' => 'HTTP_AUTHORIZATION',
-                'x-session-token' => 'HTTP_X_SESSION_TOKEN',
-                'accept-language' => 'HTTP_ACCEPT_LANGUAGE',
-            ] as $lower => $serverKey
+                'authorization' => ['HTTP_AUTHORIZATION', 'REDIRECT_HTTP_AUTHORIZATION'],
+                'x-session-token' => ['HTTP_X_SESSION_TOKEN', 'REDIRECT_HTTP_X_SESSION_TOKEN'],
+                'accept-language' => ['HTTP_ACCEPT_LANGUAGE', 'REDIRECT_HTTP_ACCEPT_LANGUAGE'],
+            ] as $lower => $serverKeys
         ) {
-            if (!isset($headers[$lower]) && isset($_SERVER[$serverKey])
-                && \is_string($_SERVER[$serverKey]) && $_SERVER[$serverKey] !== '') {
-                $headers[$lower] = $_SERVER[$serverKey];
+            if (isset($headers[$lower]) && $headers[$lower] !== '') {
+                continue;
+            }
+            foreach ($serverKeys as $serverKey) {
+                if (isset($_SERVER[$serverKey]) && \is_string($_SERVER[$serverKey]) && $_SERVER[$serverKey] !== '') {
+                    $headers[$lower] = \trim($_SERVER[$serverKey]);
+                    break;
+                }
             }
         }
 

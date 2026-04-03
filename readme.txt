@@ -5,7 +5,7 @@ CandyGrill — phased build
 
 Clone (SSH): `git@github.com:MaksymSemenykhin/CandyGrill.git`
 
-**Официальное ТЗ задания (employer):** `docs/assignment-original-spec.md`. Сверка реализации с ним: `docs/technical-spec.md`.
+**Official employer spec:** `docs/assignment-original-spec.md`. Implementation traceability: `docs/technical-spec.md`.
 
 Phase 0 — repository
 --------------------
@@ -63,7 +63,7 @@ Project lives on a Windows drive (e.g. `H:\CandyGrill` → `/mnt/h/CandyGrill` i
    * Git Bash / WSL / Linux: `chmod +x sail` then `./sail build` and `./sail up -d`
    * Windows CMD: `sail.bat build` and `sail.bat up -d`
    * Or: `docker compose build` / `docker compose up -d`
-3. Open `http://127.0.0.1:8080/` — JSON от командного API: `ok`, `stage`, `message`, `lang`.
+3. Open `http://127.0.0.1:8080/` — JSON from the command API: `ok`, `stage`, `message`, `lang`.
 4. Inside the app container, `composer install` runs on first start if `vendor/` is missing, then **`php bin/migrate.php`** runs on **every** container start so the DB schema stays in sync (rebuild image or `docker compose build app` after changing `docker-entrypoint.sh`).
 
 ### Verify phase 0.1 (automated)
@@ -114,31 +114,31 @@ Phase 1.1+ — JSON command API (incremental)
 --------------------------------------------
 Built in small steps so you can review each slice.
 
-**Текущий маркер:** `Bootstrap::PHASE` = **1.5** (`login` по ТЗ; дальше `me` / бой).
+**Current marker:** `Bootstrap::PHASE` = **1.6** (spec §3 `find_opponents`; next: combat start / moves / reward).
 
-### Part 1 (база API)
+### Part 1 (API base)
 
 * **`Game\Api\Kernel`** + **`Game\Http\IncomingRequest`**.
-* **Локализация:** Symfony **`symfony/translation`**, **`translations/api.*.yaml`**; язык: тело и query **`lang`**, **`Accept-Language`**, **`APP_LANG`**. В ответе поле **`lang`**. Подробнее: **`docs/technical-spec.md`**.
-* **GET** `/` или `/index.php` — JSON: `ok`, `stage`, `message`, **`lang`**.
-* **POST** `/`, `application/json`, поле **`command`** (`a-z`, `0-9`, `_`).
-* Команда проверяется **по файлу** в `src/Api/Handler/{Studly}Handler.php` (`ping` → `PingHandler`), класс реализует `CommandHandler`.
-* Неизвестная команда → `400`, `unknown_command`; у ответов из `Kernel` есть **`lang`**.
+* **i18n:** Symfony **`symfony/translation`**, **`translations/api.*.yaml`**; language: body and query **`lang`**, **`Accept-Language`**, **`APP_LANG`**. Responses include **`lang`**. Details: **`docs/technical-spec.md`**.
+* **GET** `/` or `/index.php` — JSON: `ok`, `stage`, `message`, **`lang`**.
+* **POST** `/`, `application/json`, field **`command`** (`a-z`, `0-9`, `_`).
+* Command is resolved **by file** in `src/Api/Handler/{Studly}Handler.php` (`ping` → `PingHandler`), class implements `CommandHandler`.
+* Unknown command → `400`, `unknown_command`; `Kernel` responses include **`lang`**.
 
-### Part 2 (done в **1.2**)
+### Part 2 (done in **1.2**)
 
-* **`DatabaseConfig::isComplete()`** — есть ли `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` (не пустые); пароль может быть пустым. Без исключений.
-* **`HealthHandler`**, команда **`health`:** `data.database.configured`, `data.database.reachable` (`SELECT 1` через PDO только если конфиг полный; при ошибке подключения `reachable` = `false`).
+* **`DatabaseConfig::isComplete()`** — whether `DB_HOST`, `DB_DATABASE`, `DB_USERNAME` are set (non-empty); password may be empty. No exceptions thrown.
+* **`HealthHandler`**, command **`health`:** `data.database.configured`, `data.database.reachable` (`SELECT 1` via PDO only when config is complete; on connect error `reachable` = `false`).
 
-### Part 3 (done в **1.3**)
+### Part 3 (done in **1.3**)
 
-* **`SESSION_DRIVER`** — `memory` (по умолчанию, один процесс PHP) или **`memcached`** (нужен `ext-memcached`, хост/порт из `.env`).
-* **`SESSION_TTL_SECONDS`**, **`SESSION_ALLOW_ISSUE`** — выдача токена без логина только если `SESSION_ALLOW_ISSUE=1` (в проде обычно `false`; Part 4 заменит на `login`).
-* **`SESSION_MEMORY_SYNC_FILE`** (опция при `memory`) — путь к JSON-файлу, общий между запросами `php -S` (в PHPUnit задан по умолчанию; для FPM без этого файла используется чисто in-memory singleton на воркер).
-* Разбор сессии на каждый POST: **`Authorization: Bearer <token>`**, опционально **`X-Session-Token: <token>`**, либо в теле JSON **`session_id`** (тот же токен, что после `login`; для совместимости ещё **`access_token`**). Удобно для `php -S`, где заголовки до скрипта доходят не везде. Результат — в **`Game\Http\ApiContext`**.
-* Команды **`session_issue`** (тело: `user_id` положительный int) и **`session_status`** (смотрит Bearer, отвечает `authenticated` и при необходимости `user_id`).
+* **`SESSION_DRIVER`** — `memory` (default, single PHP process) or **`memcached`** (needs `ext-memcached`, host/port from `.env`).
+* **`SESSION_TTL_SECONDS`**, **`SESSION_ALLOW_ISSUE`** — token without login only when `SESSION_ALLOW_ISSUE=1` (usually `false` in prod; Part 4 adds `login` as the real path).
+* **`SESSION_MEMORY_SYNC_FILE`** (optional with `memory`) — if unset, sessions are **in-memory** per PHP worker; set a path only when you need a JSON file (e.g. sharing across `php -S`). PHPUnit sets a temp file for test isolation. For several FPM workers use **`memcached`**.
+* Session resolution on each POST: **`Authorization: Bearer <token>`**, optional **`X-Session-Token: <token>`**, or JSON body **`session_id`** (same token as after `login`; also **`access_token`** for compatibility). Helps when `php -S` omits headers. Result in **`Game\Http\ApiContext`**.
+* Commands **`session_issue`** (body: positive int `user_id`) and **`session_status`** (reads Bearer, returns `authenticated` and `user_id` when applicable).
 
-**curl** (порт из `.env`, чаще **8080**):
+**curl** (port from `.env`, often **8080**):
 
 ```bash
 curl -sS "http://127.0.0.1:8080/"
@@ -157,22 +157,23 @@ curl -sS -X POST "http://127.0.0.1:8080/" \
   -d '{"command":"session_status"}'
 ```
 
-### Part 4 (в процессе)
+### Part 4 (in progress)
 
-* **Официальное ТЗ:** **`docs/assignment-original-spec.md`**, сверка **`docs/technical-spec.md`**.
-* **`login`:** **`player_id`** (UUID из `register`) → **`session_id`**, **`expires_in`**. См. **`public/openapi.yaml`**.
-* **Дальше:** `me`, бой (ТЗ п.3–6).
+* **Official spec:** **`docs/assignment-original-spec.md`**, traceability **`docs/technical-spec.md`**.
+* **`login`:** **`player_id`** (UUID from `register`) → **`session_id`**, **`expires_in`**. See **`public/openapi.yaml`**.
+* **`find_opponents`** (spec §3): after `login` — POST with **`Authorization: Bearer <session_id>`**, body `{"command":"find_opponents"}` → **`data.opponents`** (1–2 objects `player_id`, `name`, same `level`, not you).
+* **Next:** combat start, moves, reward (spec §4–6).
 
 ### OpenAPI / Swagger UI
 
-* Спека: **`public/openapi.yaml`**. UI: **`/api-docs/index.html`** (подгружает **`/openapi.yaml`**).
+* Spec: **`public/openapi.yaml`**. UI: **`/api-docs/index.html`** (loads **`/openapi.yaml`**).
 
-**WSL:** каталог в Linux-пути (`cd /mnt/h/CandyGrill` и т.д.), **`./sail up -d`**, в браузере **`http://127.0.0.1:<APP_PORT>/api-docs/index.html`**. Без Docker: `php -S 0.0.0.0:8080 -t public` из корня репозитория.
+**WSL:** repo on a Linux path (`cd /mnt/h/CandyGrill`, etc.), **`./sail up -d`**, open **`http://127.0.0.1:<APP_PORT>/api-docs/index.html`**. Without Docker: `php -S 0.0.0.0:8080 -t public` from repo root.
 
-### Дальше по плану
+### Roadmap
 
-* Part 4 — `me`, затем бой; в проде токен через **`login`**, не **`session_issue`**.
+* Part 4 — `me`, then combat; in prod use **`login`** for tokens, not **`session_issue`**.
 
 Later phases
 ------------
-Domain (combat), repositories, расширение OpenAPI, health checks, etc.
+Domain (combat), repositories, OpenAPI extensions, health checks, etc.

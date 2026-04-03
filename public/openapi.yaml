@@ -1,10 +1,18 @@
 openapi: 3.0.3
 info:
   title: CandyGrill
-  version: 1.6.13
+  version: 1.7.4
+  description: |
+    **Session:** after `login`, click **Authorize** and paste the 64 hex chars from `data.session_id` (Swagger adds `Authorization: Bearer …`).
+
+    For `register` / `login`, call the API without Authorize (or click Logout).
 
 servers:
   - url: http://127.0.0.1:8080
+
+# Avoid unnecessary `{}` at operation level — Swagger UI may stop sending Authorization.
+security:
+  - sessionBearer: []
 
 tags:
   - name: Commands
@@ -15,6 +23,8 @@ paths:
       tags: [Commands]
       summary: POST /
       operationId: postCommand
+      description: >-
+        For session commands (`find_opponents`, …) click **Authorize** and paste `session_id` from `login` (64 hex, no `Bearer` prefix).
       parameters:
         - $ref: '#/components/parameters/LangQuery'
       requestBody:
@@ -25,44 +35,56 @@ paths:
               oneOf:
                 - $ref: '#/components/schemas/RegisterRequest'
                 - $ref: '#/components/schemas/LoginRequest'
+                - $ref: '#/components/schemas/FindOpponentsRequest'
               discriminator:
                 propertyName: command
                 mapping:
                   register: '#/components/schemas/RegisterRequest'
                   login: '#/components/schemas/LoginRequest'
+                  find_opponents: '#/components/schemas/FindOpponentsRequest'
             examples:
               register:
-                summary: 'Шаблон: register'
+                summary: 'Template: register'
                 value:
                   command: register
                   name: MyHero
               login:
-                summary: 'Шаблон: login'
+                summary: 'Template: login'
                 value:
                   command: login
                   player_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+              find_opponents:
+                summary: 'Template: find_opponents (needs Bearer session_id)'
+                value:
+                  command: find_opponents
 
           application/x-www-form-urlencoded:
             schema:
               oneOf:
                 - $ref: '#/components/schemas/RegisterRequest'
                 - $ref: '#/components/schemas/LoginRequest'
+                - $ref: '#/components/schemas/FindOpponentsRequest'
               discriminator:
                 propertyName: command
                 mapping:
                   register: '#/components/schemas/RegisterRequest'
                   login: '#/components/schemas/LoginRequest'
+                  find_opponents: '#/components/schemas/FindOpponentsRequest'
             examples:
               register:
-                summary: 'Шаблон: register (form)'
+                summary: 'Template: register (form)'
                 value:
                   command: register
                   name: MyHero
               login:
-                summary: 'Шаблон: login (form)'
+                summary: 'Template: login (form)'
                 value:
                   command: login
                   player_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+              find_opponents:
+                summary: 'Template: find_opponents (form)'
+                value:
+                  command: find_opponents
 
       responses:
         '200':
@@ -73,6 +95,7 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/RegisterOk'
                   - $ref: '#/components/schemas/LoginOk'
+                  - $ref: '#/components/schemas/FindOpponentsOk'
 
         '400':
           description: Bad request
@@ -83,6 +106,13 @@ paths:
 
         '401':
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+
+        '404':
+          description: Not Found
           content:
             application/json:
               schema:
@@ -103,6 +133,15 @@ paths:
                 $ref: '#/components/schemas/ErrorBody'
 
 components:
+  securitySchemes:
+    sessionBearer:
+      type: http
+      scheme: bearer
+      bearerFormat: session_id
+      description: >-
+        Value of `data.session_id` after `login` (exactly 64 hex chars). Enter hex only — Swagger adds the `Bearer ` prefix.
+        Outside Swagger you may send the same token via `X-Session-Token` or JSON body field `session_id`; the server accepts both.
+
   parameters:
     LangQuery:
       name: lang
@@ -144,6 +183,21 @@ components:
           type: string
           enum: [en, ru]
 
+    FindOpponentsRequest:
+      type: object
+      required: [command]
+      additionalProperties: false
+      properties:
+        command:
+          type: string
+          enum: [find_opponents]
+        lang:
+          type: string
+          enum: [en, ru]
+        session_id:
+          type: string
+          description: Optional; otherwise use Authorization Bearer header.
+
     RegisterOk:
       type: object
       required: [ok, data, lang]
@@ -181,9 +235,39 @@ components:
             session_id:
               type: string
               description: >-
-                Токен сессии (64 hex); в заголовке — `Authorization: Bearer <session_id>`.
+                Session token (64 hex); send as `Authorization: Bearer <session_id>`.
             expires_in:
               type: integer
+
+    FindOpponentsOk:
+      type: object
+      required: [ok, data, lang]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        lang:
+          type: string
+          enum: [en, ru]
+        data:
+          type: object
+          required: [opponents]
+          additionalProperties: false
+          properties:
+            opponents:
+              type: array
+              minItems: 1
+              maxItems: 2
+              items:
+                type: object
+                required: [player_id, name]
+                additionalProperties: false
+                properties:
+                  player_id:
+                    type: string
+                    format: uuid
+                  name:
+                    type: string
 
     ErrorBody:
       type: object

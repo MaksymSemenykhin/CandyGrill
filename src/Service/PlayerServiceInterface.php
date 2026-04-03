@@ -9,7 +9,7 @@ use Game\Database\DatabaseConnection;
 use Game\Repository\ActivePlayerLookup;
 use Throwable;
 
-/** ТЗ п.1–2: регистрация персонажа и логин по `player_id`. */
+/** Spec §1–2: character registration and login by `player_id`. */
 interface PlayerServiceInterface
 {
     /**

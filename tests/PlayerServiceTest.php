@@ -12,7 +12,7 @@ use PHPUnit\Framework\TestCase;
 use ReflectionMethod;
 
 /**
- * {@see PlayerService}: скиллы при регистрации (ТЗ) и логин.
+ * {@see PlayerService}: registration skills (spec) and login.
  */
 final class PlayerServiceTest extends TestCase
 {

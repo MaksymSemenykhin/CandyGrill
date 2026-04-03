@@ -9,7 +9,7 @@ use Symfony\Component\Translation\Translator;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Загружает домен **api** из файлов `translations/api.<lang>.yaml` (`en` / `ru`, Symfony Translation).
+ * Loads **api** domain from `translations/api.<lang>.yaml` (`en` / `ru`, Symfony Translation).
  */
 final class ApiTranslator
 {

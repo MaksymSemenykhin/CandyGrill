@@ -9,7 +9,7 @@ use Game\Api\Validation\RegisterCharacterNameInput;
 use PHPUnit\Framework\TestCase;
 
 /**
- * {@see RegisterCharacterNameInput} — те же правила, что и в {@see \Game\Api\Handler\RegisterHandler} (Symfony Validator).
+ * {@see RegisterCharacterNameInput} — same rules as {@see \Game\Api\Handler\RegisterHandler} (Symfony Validator).
  */
 final class RegisterCharacterNameInputTest extends TestCase
 {

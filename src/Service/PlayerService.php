@@ -75,7 +75,7 @@ final class PlayerService implements PlayerServiceInterface
     }
 
     /**
-     * По ТЗ при создании персонажа три скилла — независимые случайные значения от 0 до 50 включительно.
+     * Per spec: on character creation, three skills are independent random integers from 0 through 50 inclusive.
      *
      * @return array{int, int, int}
      * @throws RandomException

@@ -17,7 +17,7 @@ use PHPUnit\Framework\TestCase;
 /**
  * TZ registration + DB with GAME_INTEGRATION_DB=1.
  *
- * Скиллы 0–50: {@see docs/assignment-original-spec.md} (Characters).
+ * Skills 0–50: {@see docs/assignment-original-spec.md} (Characters).
  */
 final class RegisterMysqlIntegrationTest extends TestCase
 {

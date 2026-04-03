@@ -8,7 +8,7 @@ use Game\Http\IncomingRequest;
 use JsonException;
 
 /**
- * POST body: JSON (default) or `application/x-www-form-urlencoded` (поля формы).
+ * POST body: JSON (default) or `application/x-www-form-urlencoded` (form fields).
  */
 final class RequestBodyDecoder
 {

@@ -75,7 +75,7 @@ final class SessionService
         if (!preg_match('/^\s*Bearer\s+(\S+)\s*$/i', $authorizationHeader, $m)) {
             return null;
         }
-        $token = $m[1];
+        $token = strtolower($m[1]);
         if (!preg_match('/^[a-f0-9]{64}$/', $token)) {
             return null;
         }
@@ -90,11 +90,18 @@ final class SessionService
         } catch (\JsonException) {
             return null;
         }
-        if (!\is_array($data) || !isset($data['user_id']) || !\is_int($data['user_id'])) {
+        if (!\is_array($data) || !isset($data['user_id'])) {
+            return null;
+        }
+        $uid = $data['user_id'];
+        if (\is_string($uid) && \ctype_digit($uid)) {
+            $uid = (int) $uid;
+        }
+        if (!\is_int($uid) || $uid < 1) {
             return null;
         }
 
-        return new Session(userId: $data['user_id']);
+        return new Session(userId: $uid);
     }
 
     private static function cacheKeyForToken(string $token): string

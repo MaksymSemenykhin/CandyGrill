@@ -4,8 +4,13 @@
     <meta charset="UTF-8">
     <title>CandyGrill API docs (Swagger UI)</title>
     <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css" crossorigin>
+    <style>
+        .cg-swagger-hint { font: 14px/1.4 system-ui, sans-serif; margin: 12px 16px 0; padding: 10px 14px; background: #1b1b1b; color: #e0e0e0; border-radius: 6px; max-width: 720px; }
+        .cg-swagger-hint code { background: #333; padding: 1px 6px; border-radius: 4px; }
+    </style>
 </head>
 <body>
+<p class="cg-swagger-hint"><strong>Session:</strong> <strong>Authorize</strong> → paste hex from <code>login</code> only (Swagger adds the <code>Bearer</code> prefix). For <code>register</code>/<code>login</code>, leave authorization empty.</p>
 <div id="swagger-ui"></div>
 <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js" crossorigin></script>
 <script>
@@ -16,6 +21,8 @@
             deepLinking: true,
             displayRequestDuration: true,
             tryItOutEnabled: true,
+            persistAuthorization: true,
+            filter: true,
         });
     };
 </script>

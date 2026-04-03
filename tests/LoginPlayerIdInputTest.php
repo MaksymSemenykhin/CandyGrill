@@ -9,7 +9,7 @@ use Game\Api\Validation\LoginPlayerIdInput;
 use PHPUnit\Framework\TestCase;
 
 /**
- * {@see LoginPlayerIdInput} — правила поля `player_id` в {@see \Game\Api\Handler\LoginHandler}.
+ * {@see LoginPlayerIdInput} — `player_id` rules for {@see \Game\Api\Handler\LoginHandler}.
  */
 final class LoginPlayerIdInputTest extends TestCase
 {

@@ -29,11 +29,23 @@ final class FileSessionStore implements SessionStore
         $this->writeMap($map);
     }
 
+    private function ensureParentDirectory(): void
+    {
+        $dir = \dirname($this->path);
+        if ($dir === '.' || $dir === '' || \is_dir($dir)) {
+            return;
+        }
+        if (!@mkdir($dir, 0777, true) && !\is_dir($dir)) {
+            throw new \RuntimeException('Cannot create session store directory: ' . $dir);
+        }
+    }
+
     /**
      * @return array<string, string>
      */
     private function readMap(): array
     {
+        $this->ensureParentDirectory();
         $h = fopen($this->path, 'cb+');
         if ($h === false) {
             return [];
@@ -77,10 +89,7 @@ final class FileSessionStore implements SessionStore
      */
     private function writeMap(array $map): void
     {
-        $dir = \dirname($this->path);
-        if (!is_dir($dir) && !@mkdir($dir, 0777, true) && !is_dir($dir)) {
-            throw new \RuntimeException('Cannot create session store directory: ' . $dir);
-        }
+        $this->ensureParentDirectory();
         $h = fopen($this->path, 'cb+');
         if ($h === false) {
             throw new \RuntimeException('Cannot open session store file: ' . $this->path);

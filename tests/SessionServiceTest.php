@@ -6,6 +6,7 @@ namespace Game\Tests;
 
 use Game\Config\SessionConfig;
 use Game\Session\SessionService;
+use Game\Session\SessionStore;
 use PHPUnit\Framework\TestCase;
 
 final class SessionServiceTest extends TestCase
@@ -35,6 +36,20 @@ final class SessionServiceTest extends TestCase
         $this->assertSame(42, $session->userId);
     }
 
+    public function testResolveNormalizesHexTokenToLowercase(): void
+    {
+        $config = new SessionConfig('memory', 3600, '127.0.0.1', 11_211, false, null);
+        $svc = SessionService::fromConfig($config);
+        $low = $svc->issueToken(99)['token'];
+        $this->assertMatchesRegularExpression('/^[a-f0-9]{64}$/', $low);
+        $mixed = strtoupper(substr($low, 0, 16)) . substr($low, 16);
+        $this->assertNotSame($low, $mixed);
+
+        $session = $svc->resolveFromBearer('Bearer ' . $mixed);
+        $this->assertNotNull($session);
+        $this->assertSame(99, $session->userId);
+    }
+
     public function testResolveRejectsMalformedHeaderAndToken(): void
     {
         $config = new SessionConfig('memory', 60, '127.0.0.1', 11_211, false, null);
@@ -45,5 +60,17 @@ final class SessionServiceTest extends TestCase
         $this->assertNull($svc->resolveFromBearer('Bearer not-hex'));
         $issued = $svc->issueToken(1);
         $this->assertNull($svc->resolveFromBearer('Bearer ' . substr($issued['token'], 0, 32)));
+    }
+
+    public function testResolveAcceptsJsonUserIdAsNumericString(): void
+    {
+        $token = str_repeat('a', 64);
+        $key = 'cg:sess:' . hash('sha256', $token);
+        $store = $this->createMock(SessionStore::class);
+        $store->expects($this->once())->method('get')->with($key)->willReturn('{"user_id":"42"}');
+        $svc = new SessionService($store, 3600);
+        $session = $svc->resolveFromBearer('Bearer ' . $token);
+        $this->assertNotNull($session);
+        $this->assertSame(42, $session->userId);
     }
 }

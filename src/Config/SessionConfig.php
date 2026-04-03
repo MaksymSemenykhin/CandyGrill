@@ -23,8 +23,7 @@ final class SessionConfig
         if ($ttl < 60) {
             $ttl = 60;
         }
-        $sync = self::optionalString('SESSION_MEMORY_SYNC_FILE');
-        $memorySyncFile = ($sync !== null && $sync !== '') ? $sync : null;
+        $memorySyncFile = self::memorySyncFileFromEnv();
 
         return new self(
             driver: $driver,
@@ -34,6 +33,28 @@ final class SessionConfig
             allowIssue: self::boolEnv('SESSION_ALLOW_ISSUE', false),
             memorySyncFile: $memorySyncFile,
         );
+    }
+
+    /**
+     * `SESSION_MEMORY_SYNC_FILE` non-empty → {@see FileSessionStore}; missing or empty → {@see MemorySessionStore}
+     * (when {@see SessionService} uses the `memory` driver). Memcached ignores this field.
+     */
+    private static function memorySyncFileFromEnv(): ?string
+    {
+        $key = 'SESSION_MEMORY_SYNC_FILE';
+        if (\array_key_exists($key, $_ENV)) {
+            $v = (string) $_ENV[$key];
+
+            return $v !== '' ? $v : null;
+        }
+        $g = \getenv($key);
+        if ($g !== false) {
+            $v = (string) $g;
+
+            return $v !== '' ? $v : null;
+        }
+
+        return null;
     }
 
     private static function strEnv(string $key, string $default): string

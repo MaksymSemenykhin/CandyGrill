@@ -9,7 +9,7 @@ use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
 /**
- * Поле `player_id` из тела login (TZ #2): строка UUID v4, как в ответе {@see RegisterHandler}.
+ * `player_id` from login body (spec #2): UUID v4 string, same shape as in {@see RegisterHandler} response.
  */
 final readonly class LoginPlayerIdInput
 {

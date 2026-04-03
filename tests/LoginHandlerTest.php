@@ -15,6 +15,31 @@ use PHPUnit\Framework\TestCase;
 
 final class LoginHandlerTest extends TestCase
 {
+    private bool $matchPoolEnvHadKey = false;
+
+    /** @var mixed */
+    private $matchPoolEnvPrev = null;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $key = 'MATCH_POOL_ENABLED';
+        $this->matchPoolEnvHadKey = \array_key_exists($key, $_ENV);
+        $this->matchPoolEnvPrev = $this->matchPoolEnvHadKey ? $_ENV[$key] : null;
+        $_ENV[$key] = '0';
+    }
+
+    protected function tearDown(): void
+    {
+        $key = 'MATCH_POOL_ENABLED';
+        if ($this->matchPoolEnvHadKey) {
+            $_ENV[$key] = $this->matchPoolEnvPrev;
+        } else {
+            unset($_ENV[$key]);
+        }
+        parent::tearDown();
+    }
+
     public function testDelegatesToPlayerServiceWithDbUsers(): void
     {
         $uuid = 'd4d5e6f7-a8b9-4d0e-9f1a-2b3c4d5e6f70';

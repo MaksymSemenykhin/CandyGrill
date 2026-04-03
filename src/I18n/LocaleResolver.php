@@ -7,12 +7,12 @@ namespace Game\I18n;
 use Game\Http\IncomingRequest;
 
 /**
- * Приоритет: тело POST **`lang`** → query **`lang`** → **Accept-Language** → **APP_LANG**.
+ * Priority: POST body **`lang`** → query **`lang`** → **Accept-Language** → **APP_LANG**.
  */
 final class LocaleResolver
 {
     /**
-     * @param array<string, mixed>|null $body Decoded JSON or form fields (null до разбора тела).
+     * @param array<string, mixed>|null $body Decoded JSON or form fields (null before body is parsed).
      */
     public static function resolve(?array $body, IncomingRequest $request): string
     {
