@@ -1,4 +1,4 @@
-# Сообщения API и валидации — русский (по Accept-Language: ru или APP_LOCALE=ru)
+# Сообщения API и валидации — русский (по Accept-Language: ru или APP_LANG=ru)
 api.bootstrap.message: 'Фаза 1.5: POST JSON `command` — `register`, `login` (`player_id` → токен сессии), `ping`, `health`, session_*. Далее: me / бой.'
 api.error.method_not_allowed: 'Используйте POST с телом application/json или application/x-www-form-urlencoded.'
 api.error.invalid_json: 'Тело запроса должно быть корректным JSON или полями form-urlencoded.'

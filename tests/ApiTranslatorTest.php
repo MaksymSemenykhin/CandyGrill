@@ -9,7 +9,7 @@ use PHPUnit\Framework\TestCase;
 
 final class ApiTranslatorTest extends TestCase
 {
-    public function testRussianLocaleReturnsTranslatedError(): void
+    public function testRussianLangReturnsTranslatedError(): void
     {
         $t = ApiTranslator::createForProject(dirname(__DIR__));
         $t->setLocale('ru');

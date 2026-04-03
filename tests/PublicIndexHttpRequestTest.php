@@ -173,18 +173,6 @@ final class PublicIndexHttpRequestTest extends TestCase
     /**
      * @throws \JsonException
      */
-    public function testGetRootWithQueryLocaleRu(): void
-    {
-        $raw = $this->httpGet('/?locale=ru');
-        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
-        $this->assertTrue($data['ok']);
-        $this->assertApiEnvelope($data, 'ru');
-        $this->assertStringContainsString('Фаза', (string) $data['message']);
-    }
-
-    /**
-     * @throws \JsonException
-     */
     public function testGetRootWithQueryLangRu(): void
     {
         $raw = $this->httpGet('/?lang=ru');
@@ -207,13 +195,13 @@ final class PublicIndexHttpRequestTest extends TestCase
     }
 
     /**
-     * Query `locale` applies to POST before the body is parsed (e.g. invalid JSON errors).
+     * Query `lang` applies to POST before the body is parsed (e.g. invalid JSON errors).
      *
      * @throws \JsonException
      */
-    public function testPostInvalidJsonUsesQueryLocaleRu(): void
+    public function testPostInvalidJsonUsesQueryLangRu(): void
     {
-        $raw = $this->httpPostRaw('/?locale=ru', "{not json");
+        $raw = $this->httpPostRaw('/?lang=ru', "{not json");
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertFalse($data['ok']);
         $this->assertSame('invalid_json', $data['error']['code']);
@@ -224,9 +212,9 @@ final class PublicIndexHttpRequestTest extends TestCase
     /**
      * @throws \JsonException
      */
-    public function testPostPingWithQueryLocaleRu(): void
+    public function testPostPingWithQueryLangRu(): void
     {
-        $raw = $this->httpPostJson('/?locale=ru', ['command' => 'ping']);
+        $raw = $this->httpPostJson('/?lang=ru', ['command' => 'ping']);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
         $this->assertApiEnvelope($data, 'ru');
@@ -246,13 +234,13 @@ final class PublicIndexHttpRequestTest extends TestCase
     }
 
     /**
-     * JSON `locale` / `lang` wins over query (same as {@see LocaleResolverTest::testLocaleKeyPreferredOverLangKeyInBody}).
+     * JSON `lang` in body wins over query `lang`.
      *
      * @throws \JsonException
      */
-    public function testPostPingBodyLocaleOverridesQueryLang(): void
+    public function testPostPingBodyLangOverridesQueryLang(): void
     {
-        $raw = $this->httpPostJson('/?lang=ru', ['command' => 'ping', 'locale' => 'en']);
+        $raw = $this->httpPostJson('/?lang=ru', ['command' => 'ping', 'lang' => 'en']);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
         $this->assertApiEnvelope($data, 'en');
@@ -261,9 +249,9 @@ final class PublicIndexHttpRequestTest extends TestCase
     /**
      * @throws \JsonException
      */
-    public function testPostUnknownCommandUsesQueryLocaleForErrorMessage(): void
+    public function testPostUnknownCommandUsesQueryLangForErrorMessage(): void
     {
-        $raw = $this->httpPostJson('/?locale=ru', ['command' => 'not_implemented_yet']);
+        $raw = $this->httpPostJson('/?lang=ru', ['command' => 'not_implemented_yet']);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertFalse($data['ok']);
         $this->assertSame('unknown_command', $data['error']['code']);
@@ -318,9 +306,9 @@ final class PublicIndexHttpRequestTest extends TestCase
     /**
      * @throws \JsonException
      */
-    public function testPostPingWithJsonBodyLocaleRu(): void
+    public function testPostPingWithJsonBodyLangRu(): void
     {
-        $raw = $this->httpPostJson('/', ['command' => 'ping', 'locale' => 'ru']);
+        $raw = $this->httpPostJson('/', ['command' => 'ping', 'lang' => 'ru']);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
         $this->assertApiEnvelope($data, 'ru');
@@ -399,10 +387,10 @@ final class PublicIndexHttpRequestTest extends TestCase
     /**
      * @param array<string, mixed> $data
      */
-    private function assertApiEnvelope(array $data, string $expectedLocale = 'en'): void
+    private function assertApiEnvelope(array $data, string $expectedLang = 'en'): void
     {
-        $this->assertArrayHasKey('locale', $data);
-        $this->assertSame($expectedLocale, $data['locale']);
+        $this->assertArrayHasKey('lang', $data);
+        $this->assertSame($expectedLang, $data['lang']);
     }
 
     private function httpGet(string $path): string

@@ -33,16 +33,16 @@ final class IncomingRequestGlobalsTest extends TestCase
         parent::tearDown();
     }
 
-    public function testLocaleFromGetSuperglobalWhenRequestUriHasNoQueryString(): void
+    public function testLangFromGetSuperglobalWhenRequestUriHasNoQueryString(): void
     {
         $_SERVER['REQUEST_METHOD'] = 'GET';
         $_SERVER['REQUEST_URI'] = '/';
         unset($_SERVER['QUERY_STRING'], $_SERVER['REDIRECT_QUERY_STRING']);
-        $_GET = ['locale' => 'ru'];
+        $_GET = ['lang' => 'ru'];
 
         $req = IncomingRequest::fromGlobals();
 
-        $this->assertSame(['locale' => 'ru'], $req->query);
+        $this->assertSame(['lang' => 'ru'], $req->query);
         $this->assertSame('ru', LocaleResolver::resolve(null, $req));
     }
 

@@ -12,59 +12,44 @@ final class LocaleResolverTest extends TestCase
 {
     protected function tearDown(): void
     {
-        unset($_ENV['APP_LOCALE']);
+        unset($_ENV['APP_LANG']);
         parent::tearDown();
     }
 
-    public function testBodyLocaleWinsOverQuery(): void
+    public function testBodyLangWinsOverQuery(): void
     {
-        $r = new IncomingRequest('POST', '/', [], '{}', ['locale' => 'ru']);
-        $this->assertSame('en', LocaleResolver::resolve(['command' => 'ping', 'locale' => 'en'], $r));
+        $r = new IncomingRequest('POST', '/', [], '{}', ['lang' => 'ru']);
+        $this->assertSame('en', LocaleResolver::resolve(['command' => 'ping', 'lang' => 'en'], $r));
     }
 
-    public function testBodyLangAlias(): void
+    public function testBodyLangRu(): void
     {
         $r = new IncomingRequest('POST', '/', [], '{}', []);
         $this->assertSame('ru', LocaleResolver::resolve(['command' => 'ping', 'lang' => 'ru'], $r));
     }
 
-    public function testQueryLocaleWhenNoBody(): void
-    {
-        $r = new IncomingRequest('GET', '/', [], '', ['locale' => 'ru']);
-        $this->assertSame('ru', LocaleResolver::resolve(null, $r));
-    }
-
-    public function testQueryLangAliasWhenNoBody(): void
+    public function testQueryLangWhenNoBody(): void
     {
         $r = new IncomingRequest('GET', '/', [], '', ['lang' => 'ru']);
         $this->assertSame('ru', LocaleResolver::resolve(null, $r));
     }
 
-    public function testNormalizeLocaleWithRegionInBody(): void
+    public function testNormalizeLangWithRegionInBody(): void
     {
         $r = new IncomingRequest('POST', '/', [], '{}', []);
-        $this->assertSame('ru', LocaleResolver::resolve(['command' => 'ping', 'locale' => 'ru-RU'], $r));
-        $this->assertSame('ru', LocaleResolver::resolve(['command' => 'ping', 'locale' => 'ru_RU'], $r));
-        $this->assertSame('en', LocaleResolver::resolve(['command' => 'ping', 'locale' => 'en-US'], $r));
+        $this->assertSame('ru', LocaleResolver::resolve(['command' => 'ping', 'lang' => 'ru-RU'], $r));
+        $this->assertSame('ru', LocaleResolver::resolve(['command' => 'ping', 'lang' => 'ru_RU'], $r));
+        $this->assertSame('en', LocaleResolver::resolve(['command' => 'ping', 'lang' => 'en-US'], $r));
     }
 
-    public function testLocaleKeyPreferredOverLangKeyInBody(): void
-    {
-        $r = new IncomingRequest('POST', '/', [], '{}', ['lang' => 'ru']);
-        $this->assertSame(
-            'en',
-            LocaleResolver::resolve(['command' => 'ping', 'locale' => 'en', 'lang' => 'ru'], $r),
-        );
-    }
-
-    public function testInvalidLocaleInQueryFallsBackToAccept(): void
+    public function testInvalidLangInQueryFallsBackToAccept(): void
     {
         $r = new IncomingRequest(
             'GET',
             '/',
             ['accept-language' => 'ru'],
             '',
-            ['locale' => 'xx'],
+            ['lang' => 'xx'],
         );
         $this->assertSame('ru', LocaleResolver::resolve(null, $r));
     }
@@ -93,7 +78,7 @@ final class LocaleResolverTest extends TestCase
         $this->assertSame('en', LocaleResolver::resolve(null, $r));
     }
 
-    public function testInvalidLocaleInBodyFallsBackToAccept(): void
+    public function testInvalidLangInBodyFallsBackToAccept(): void
     {
         $r = new IncomingRequest(
             'POST',
@@ -102,12 +87,12 @@ final class LocaleResolverTest extends TestCase
             '{}',
             [],
         );
-        $this->assertSame('ru', LocaleResolver::resolve(['command' => 'ping', 'locale' => 'de'], $r));
+        $this->assertSame('ru', LocaleResolver::resolve(['command' => 'ping', 'lang' => 'de'], $r));
     }
 
-    public function testAppLocaleEnvWhenNothingElse(): void
+    public function testAppLangEnvWhenNothingElse(): void
     {
-        $_ENV['APP_LOCALE'] = 'ru';
+        $_ENV['APP_LANG'] = 'ru';
         $r = new IncomingRequest('GET', '/', [], '', []);
         $this->assertSame('ru', LocaleResolver::resolve(null, $r));
     }

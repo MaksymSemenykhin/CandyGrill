@@ -63,7 +63,7 @@ Project lives on a Windows drive (e.g. `H:\CandyGrill` → `/mnt/h/CandyGrill` i
    * Git Bash / WSL / Linux: `chmod +x sail` then `./sail build` and `./sail up -d`
    * Windows CMD: `sail.bat build` and `sail.bat up -d`
    * Or: `docker compose build` / `docker compose up -d`
-3. Open `http://127.0.0.1:8080/` — JSON от командного API: `ok`, `stage`, `message`, `locale`.
+3. Open `http://127.0.0.1:8080/` — JSON от командного API: `ok`, `stage`, `message`, `lang`.
 4. Inside the app container, `composer install` runs on first start if `vendor/` is missing, then **`php bin/migrate.php`** runs on **every** container start so the DB schema stays in sync (rebuild image or `docker compose build app` after changing `docker-entrypoint.sh`).
 
 ### Verify phase 0.1 (automated)
@@ -119,11 +119,11 @@ Built in small steps so you can review each slice.
 ### Part 1 (база API)
 
 * **`Game\Api\Kernel`** + **`Game\Http\IncomingRequest`**.
-* **Локализация:** Symfony **`symfony/translation`**, **`translations/api.*.yaml`**; язык: тело **`locale`** / **`lang`**, query **`?locale=`**, **`Accept-Language`**, **`APP_LOCALE`**. В ответе поле **`locale`**. Подробнее: **`docs/technical-spec.md`**.
-* **GET** `/` или `/index.php` — JSON: `ok`, `stage`, `message`, **`locale`**.
+* **Локализация:** Symfony **`symfony/translation`**, **`translations/api.*.yaml`**; язык: тело и query **`lang`**, **`Accept-Language`**, **`APP_LANG`**. В ответе поле **`lang`**. Подробнее: **`docs/technical-spec.md`**.
+* **GET** `/` или `/index.php` — JSON: `ok`, `stage`, `message`, **`lang`**.
 * **POST** `/`, `application/json`, поле **`command`** (`a-z`, `0-9`, `_`).
 * Команда проверяется **по файлу** в `src/Api/Handler/{Studly}Handler.php` (`ping` → `PingHandler`), класс реализует `CommandHandler`.
-* Неизвестная команда → `400`, `unknown_command`; у ответов из `Kernel` есть **`locale`**.
+* Неизвестная команда → `400`, `unknown_command`; у ответов из `Kernel` есть **`lang`**.
 
 ### Part 2 (done в **1.2**)
 

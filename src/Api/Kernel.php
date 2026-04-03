@@ -40,14 +40,14 @@ final class Kernel
     public function run(): void
     {
         $req = IncomingRequest::fromGlobals();
-        $preBodyLocale = LocaleResolver::resolve(null, $req);
-        $this->i18n->setLocale($preBodyLocale);
+        $preBodyLang = LocaleResolver::resolve(null, $req);
+        $this->i18n->setLocale($preBodyLang);
 
         if ($req->method === 'GET' && ($req->path === '/' || $req->path === '/index.php')) {
             $this->sendJson(200, [
                 'ok' => true,
                 'stage' => Bootstrap::PHASE,
-                'message' => $this->i18n->trans('api.bootstrap.message', [], $preBodyLocale),
+                'message' => $this->i18n->trans('api.bootstrap.message', [], $preBodyLang),
             ]);
 
             return;
@@ -56,7 +56,7 @@ final class Kernel
         if ($req->method !== 'POST') {
             $this->sendJson(405, [
                 'ok' => false,
-                'error' => ['code' => 'method_not_allowed', 'message' => $this->i18n->trans('api.error.method_not_allowed', [], $preBodyLocale)],
+                'error' => ['code' => 'method_not_allowed', 'message' => $this->i18n->trans('api.error.method_not_allowed', [], $preBodyLang)],
             ]);
 
             return;
@@ -68,7 +68,7 @@ final class Kernel
         } catch (\JsonException) {
             $this->sendJson(400, [
                 'ok' => false,
-                'error' => ['code' => 'invalid_json', 'message' => $this->i18n->trans('api.error.invalid_json', [], $preBodyLocale)],
+                'error' => ['code' => 'invalid_json', 'message' => $this->i18n->trans('api.error.invalid_json', [], $preBodyLang)],
             ]);
 
             return;
@@ -185,7 +185,7 @@ final class Kernel
      */
     private function sendJson(int $status, array $payload): void
     {
-        $payload['locale'] = $this->i18n->getLocale();
+        $payload['lang'] = $this->i18n->getLocale();
 
         \header('Content-Type: application/json; charset=utf-8', true, $status);
         echo \json_encode($payload, JSON_THROW_ON_ERROR);

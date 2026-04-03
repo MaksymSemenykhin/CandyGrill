@@ -7,7 +7,7 @@ namespace Game\I18n;
 use Game\Http\IncomingRequest;
 
 /**
- * Приоритет: тело POST (**`locale`** / **`lang`**) → query **`locale`** / **`lang`** → **Accept-Language** → **APP_LOCALE**.
+ * Приоритет: тело POST **`lang`** → query **`lang`** → **Accept-Language** → **APP_LANG**.
  */
 final class LocaleResolver
 {
@@ -17,14 +17,14 @@ final class LocaleResolver
     public static function resolve(?array $body, IncomingRequest $request): string
     {
         if ($body !== null) {
-            $fromBody = self::firstString($body, ['locale', 'lang']);
+            $fromBody = self::firstString($body, ['lang']);
             $n = self::normalizeLocale($fromBody);
             if ($n !== null) {
                 return $n;
             }
         }
 
-        $fromQuery = self::firstString($request->query, ['locale', 'lang']);
+        $fromQuery = self::firstString($request->query, ['lang']);
         $n = self::normalizeLocale($fromQuery);
         if ($n !== null) {
             return $n;
@@ -35,7 +35,7 @@ final class LocaleResolver
             return 'ru';
         }
 
-        $fallback = $_ENV['APP_LOCALE'] ?? \getenv('APP_LOCALE');
+        $fallback = $_ENV['APP_LANG'] ?? \getenv('APP_LANG');
 
         return (\is_string($fallback) && $fallback === 'ru') ? 'ru' : 'en';
     }

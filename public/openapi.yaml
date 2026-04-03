@@ -16,7 +16,6 @@ paths:
       summary: POST /
       operationId: postCommand
       parameters:
-        - $ref: '#/components/parameters/LocaleQuery'
         - $ref: '#/components/parameters/LangQuery'
       requestBody:
         required: true
@@ -105,13 +104,6 @@ paths:
 
 components:
   parameters:
-    LocaleQuery:
-      name: locale
-      in: query
-      required: false
-      schema:
-        type: string
-        enum: [en, ru]
     LangQuery:
       name: lang
       in: query
@@ -133,9 +125,6 @@ components:
           type: string
           minLength: 1
           maxLength: 64
-        locale:
-          type: string
-          enum: [en, ru]
         lang:
           type: string
           enum: [en, ru]
@@ -151,21 +140,18 @@ components:
         player_id:
           type: string
           format: uuid
-        locale:
-          type: string
-          enum: [en, ru]
         lang:
           type: string
           enum: [en, ru]
 
     RegisterOk:
       type: object
-      required: [ok, data, locale]
+      required: [ok, data, lang]
       properties:
         ok:
           type: boolean
           example: true
-        locale:
+        lang:
           type: string
           enum: [en, ru]
         data:
@@ -179,12 +165,12 @@ components:
 
     LoginOk:
       type: object
-      required: [ok, data, locale]
+      required: [ok, data, lang]
       properties:
         ok:
           type: boolean
           example: true
-        locale:
+        lang:
           type: string
           enum: [en, ru]
         data:
@@ -194,18 +180,19 @@ components:
           properties:
             session_id:
               type: string
-              description: Токен сессии (64 hex); в заголовке — `Authorization: Bearer <session_id>`.
+              description: >-
+                Токен сессии (64 hex); в заголовке — `Authorization: Bearer <session_id>`.
             expires_in:
               type: integer
 
     ErrorBody:
       type: object
-      required: [ok, error, locale]
+      required: [ok, error, lang]
       properties:
         ok:
           type: boolean
           example: false
-        locale:
+        lang:
           type: string
           enum: [en, ru]
         error:

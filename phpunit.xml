@@ -13,6 +13,6 @@
         <env name="SESSION_DRIVER" value="memory"/>
         <env name="SESSION_ALLOW_ISSUE" value="1"/>
         <env name="SESSION_MEMORY_SYNC_FILE" value=".phpunit-session-store.json"/>
-        <env name="APP_LOCALE" value="en"/>
+        <env name="APP_LANG" value="en"/>
     </php>
 </phpunit>

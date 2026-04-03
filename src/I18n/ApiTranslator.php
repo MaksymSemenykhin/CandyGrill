@@ -9,7 +9,7 @@ use Symfony\Component\Translation\Translator;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
- * Загружает домен **api** из {@see translations/api.{locale}.yaml} (Symfony Translation).
+ * Загружает домен **api** из файлов `translations/api.<lang>.yaml` (`en` / `ru`, Symfony Translation).
  */
 final class ApiTranslator
 {
@@ -20,12 +20,12 @@ final class ApiTranslator
 
     public static function createForProject(string $projectRoot): self
     {
-        $t = new Translator(self::defaultLocaleFromEnv());
+        $t = new Translator(self::defaultLangFromEnv());
         $t->addLoader('yaml', new YamlFileLoader());
-        foreach (['en', 'ru'] as $locale) {
-            $file = $projectRoot . '/translations/api.' . $locale . '.yaml';
+        foreach (['en', 'ru'] as $lang) {
+            $file = $projectRoot . '/translations/api.' . $lang . '.yaml';
             if (is_file($file)) {
-                $t->addResource('yaml', $file, $locale, 'api');
+                $t->addResource('yaml', $file, $lang, 'api');
             }
         }
         $t->setFallbackLocales(['en']);
@@ -33,9 +33,9 @@ final class ApiTranslator
         return new self($t);
     }
 
-    private static function defaultLocaleFromEnv(): string
+    private static function defaultLangFromEnv(): string
     {
-        $v = $_ENV['APP_LOCALE'] ?? getenv('APP_LOCALE');
+        $v = $_ENV['APP_LANG'] ?? getenv('APP_LANG');
 
         return (\is_string($v) && $v === 'ru') ? 'ru' : 'en';
     }
@@ -48,14 +48,14 @@ final class ApiTranslator
     /**
      * @param array<string, int|float|string|\Stringable> $parameters
      */
-    public function trans(string $id, array $parameters = [], ?string $locale = null): string
+    public function trans(string $id, array $parameters = [], ?string $lang = null): string
     {
-        return $this->translator->trans($id, $parameters, 'api', $locale ?? $this->translator->getLocale());
+        return $this->translator->trans($id, $parameters, 'api', $lang ?? $this->translator->getLocale());
     }
 
-    public function setLocale(string $locale): void
+    public function setLocale(string $lang): void
     {
-        $this->translator->setLocale($locale);
+        $this->translator->setLocale($lang);
     }
 
     public function getLocale(): string

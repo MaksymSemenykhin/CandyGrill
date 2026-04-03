@@ -8,7 +8,7 @@ final class IncomingRequest
 {
     /**
      * @param array<string, string> $headers Lowercased header names
-     * @param array<string, mixed>  $query   Query string (?locale=ru)
+     * @param array<string, mixed>  $query   Query string (?lang=ru)
      */
     public function __construct(
         public readonly string $method,
@@ -78,7 +78,7 @@ final class IncomingRequest
         }
 
         // Some front controllers strip the query from REQUEST_URI but PHP still fills $_GET.
-        foreach (['locale', 'lang'] as $qk) {
+        foreach (['lang'] as $qk) {
             if (!\array_key_exists($qk, $query) && isset($_GET[$qk]) && \is_string($_GET[$qk]) && $_GET[$qk] !== '') {
                 $query[$qk] = $_GET[$qk];
             }

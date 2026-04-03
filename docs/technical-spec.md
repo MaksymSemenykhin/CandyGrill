@@ -39,11 +39,11 @@
 
 ## Локализация ответов
 
-Тексты ошибок, **bootstrap** (**`GET /`**) и остальных ответов API переводятся через **Symfony Translation** (`symfony/translation`), каталог **`translations/api.{locale}.yaml`**, домен **`api`**.
+Тексты ошибок, **bootstrap** (**`GET /`**) и остальных ответов API переводятся через **Symfony Translation** (`symfony/translation`), файлы **`translations/api.en.yaml`** и **`translations/api.ru.yaml`**, домен **`api`**.
 
-**Приоритет языка:** поля тела **`locale`** или **`lang`** (строка `en` / `ru` и региональные варианты вроде `ru-RU`) → те же имена в **query** (в т.ч. **`GET /?locale=ru`** для bootstrap и **`POST /?locale=ru`** для команд) → **`Accept-Language`** (слово `ru`) → **`APP_LOCALE`** в `.env**.
+**Приоритет языка:** поле тела **`lang`** (строка `en` / `ru` и региональные варианты вроде `ru-RU`) → **`lang`** в **query** (в т.ч. **`GET /?lang=ru`** и **`POST /?lang=ru`**) → **`Accept-Language`** (слово `ru`) → **`APP_LANG`** в `.env**.
 
-В каждом JSON-ответе Kernel добавляет поле **`locale`**: фактически применённый код языка (`en` | `ru`).
+В каждом JSON-ответе Kernel добавляет поле **`lang`**: фактически применённый код языка (`en` | `ru`).
 
 ---
 

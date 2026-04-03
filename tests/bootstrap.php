@@ -12,6 +12,6 @@ Dotenv::createImmutable(dirname(__DIR__))->safeLoad();
 
 $projectRoot = dirname(__DIR__);
 $apiTranslator = ApiTranslator::createForProject($projectRoot);
-$locale = $_ENV['APP_LOCALE'] ?? \getenv('APP_LOCALE');
-$apiTranslator->setLocale(\is_string($locale) && $locale !== '' ? $locale : 'en');
+$lang = $_ENV['APP_LANG'] ?? \getenv('APP_LANG');
+$apiTranslator->setLocale(\is_string($lang) && $lang !== '' ? $lang : 'en');
 ApiValidation::configure($apiTranslator->symfonyTranslator(), 'api');
