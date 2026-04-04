@@ -73,4 +73,30 @@ final class SessionServiceTest extends TestCase
         $this->assertNotNull($session);
         $this->assertSame(42, $session->userId);
     }
+
+    /**
+     * File-backed `memory` store: a new {@see SessionService} instance must see tokens minted by a previous instance
+     * (same path as production default `.data/session-memory.json`).
+     */
+    public function testIssueAndResolveWithFileStoreAcrossSeparateServiceInstances(): void
+    {
+        $base = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'cg-sess-iso-' . bin2hex(random_bytes(5));
+        $path = $base . DIRECTORY_SEPARATOR . 'store.json';
+        $config = new SessionConfig('memory', 3600, '127.0.0.1', 11_211, true, $path);
+
+        try {
+            $writer = SessionService::fromConfig($config);
+            $token = $writer->issueToken(203)['token'];
+
+            $reader = SessionService::fromConfig($config);
+            $session = $reader->resolveFromBearer('Bearer ' . $token);
+            $this->assertNotNull($session);
+            $this->assertSame(203, $session->userId);
+        } finally {
+            if (is_file($path)) {
+                @unlink($path);
+            }
+            @rmdir($base);
+        }
+    }
 }

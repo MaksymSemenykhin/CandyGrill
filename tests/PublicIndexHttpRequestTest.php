@@ -148,7 +148,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.6', $data['stage']);
+        $this->assertSame('1.7', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertIsString($data['message']);
         $this->assertStringContainsStringIgnoringCase('POST', $data['message']);
@@ -164,7 +164,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.6', $data['stage']);
+        $this->assertSame('1.7', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertStringContainsStringIgnoringCase('command', (string) $data['message']);
         $this->assertApiEnvelope($data);
@@ -265,6 +265,22 @@ final class PublicIndexHttpRequestTest extends TestCase
     public function testPostFindOpponentsWithoutAuthReturns401WhenDatabaseConfigured(): void
     {
         [$status, $raw] = $this->httpPostJsonWithStatus('/', ['command' => 'find_opponents']);
+        if ($status === 503) {
+            $this->markTestSkipped('Database not configured on test server (503 database_not_configured).');
+        }
+        $this->assertSame(401, $status, $raw);
+        $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
+        $this->assertFalse($data['ok']);
+        $this->assertSame('unauthorized', $data['error']['code']);
+        $this->assertApiEnvelope($data);
+    }
+
+    /**
+     * @throws \JsonException
+     */
+    public function testPostMeWithoutAuthReturns401WhenDatabaseConfigured(): void
+    {
+        [$status, $raw] = $this->httpPostJsonWithStatus('/', ['command' => 'me']);
         if ($status === 503) {
             $this->markTestSkipped('Database not configured on test server (503 database_not_configured).');
         }

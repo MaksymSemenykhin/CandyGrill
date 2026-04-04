@@ -17,7 +17,7 @@ final class SessionConfigTest extends TestCase
      */
     private static function memorySyncFileMethod(): ReflectionMethod
     {
-        $m = new ReflectionMethod(SessionConfig::class, 'memorySyncFileFromEnv');
+        $m = new ReflectionMethod(SessionConfig::class, 'memorySyncFileForDriver');
         $m->setAccessible(true);
 
         return $m;
@@ -60,7 +60,7 @@ final class SessionConfigTest extends TestCase
         $prev = $had ? $_ENV[self::KEY] : null;
         $_ENV[self::KEY] = '/tmp/candygrill-session-test.json';
         try {
-            $path = self::memorySyncFileMethod()->invoke(null);
+            $path = self::memorySyncFileMethod()->invoke(null, 'memory');
             $this->assertSame('/tmp/candygrill-session-test.json', $path);
         } finally {
             if ($had) {
@@ -77,7 +77,7 @@ final class SessionConfigTest extends TestCase
         $prev = $had ? $_ENV[self::KEY] : null;
         $_ENV[self::KEY] = '';
         try {
-            $path = self::memorySyncFileMethod()->invoke(null);
+            $path = self::memorySyncFileMethod()->invoke(null, 'memory');
             $this->assertNull($path);
         } finally {
             if ($had) {
@@ -88,10 +88,18 @@ final class SessionConfigTest extends TestCase
         }
     }
 
-    public function testMemorySyncNullWhenKeyAbsentFromProcess(): void
+    public function testDefaultSyncPathForMemoryWhenKeyAbsentFromProcess(): void
     {
         $path = $this->withMemorySyncKeyRemovedFromProcess(
-            fn () => self::memorySyncFileMethod()->invoke(null),
+            fn () => self::memorySyncFileMethod()->invoke(null, 'memory'),
+        );
+        $this->assertSame('.data/session-memory.json', $path);
+    }
+
+    public function testMemorySyncNullForMemcachedWhenKeyAbsentFromProcess(): void
+    {
+        $path = $this->withMemorySyncKeyRemovedFromProcess(
+            fn () => self::memorySyncFileMethod()->invoke(null, 'memcached'),
         );
         $this->assertNull($path);
     }

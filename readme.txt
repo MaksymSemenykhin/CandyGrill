@@ -114,7 +114,7 @@ Phase 1.1+ — JSON command API (incremental)
 --------------------------------------------
 Built in small steps so you can review each slice.
 
-**Current marker:** `Bootstrap::PHASE` = **1.6** (spec §3 `find_opponents`; next: combat start / moves / reward).
+**Current marker:** `Bootstrap::PHASE` = **1.7** (`me` + spec §3 `find_opponents`; next: combat start / moves / reward).
 
 ### Part 1 (API base)
 
@@ -134,7 +134,7 @@ Built in small steps so you can review each slice.
 
 * **`SESSION_DRIVER`** — `memory` (default, single PHP process) or **`memcached`** (needs `ext-memcached`, host/port from `.env`).
 * **`SESSION_TTL_SECONDS`**, **`SESSION_ALLOW_ISSUE`** — token without login only when `SESSION_ALLOW_ISSUE=1` (usually `false` in prod; Part 4 adds `login` as the real path).
-* **`SESSION_MEMORY_SYNC_FILE`** (optional with `memory`) — if unset, sessions are **in-memory** per PHP worker; set a path only when you need a JSON file (e.g. sharing across `php -S`). PHPUnit sets a temp file for test isolation. For several FPM workers use **`memcached`**.
+* **`SESSION_MEMORY_SYNC_FILE`** (with `memory`) — unset → default **`.data/session-memory.json`** so Bearer works across workers/restarts; **`SESSION_MEMORY_SYNC_FILE=`** (empty) → in-process RAM only. PHPUnit uses a temp file. Several FPM workers: prefer default file path or **`memcached`**.
 * Session resolution on each POST: **`Authorization: Bearer <token>`**, optional **`X-Session-Token: <token>`**, or JSON body **`session_id`** (same token as after `login`; also **`access_token`** for compatibility). Helps when `php -S` omits headers. Result in **`Game\Http\ApiContext`**.
 * Commands **`session_issue`** (body: positive int `user_id`) and **`session_status`** (reads Bearer, returns `authenticated` and `user_id` when applicable).
 
@@ -161,6 +161,7 @@ curl -sS -X POST "http://127.0.0.1:8080/" \
 
 * **Official spec:** **`docs/assignment-original-spec.md`**, traceability **`docs/technical-spec.md`**.
 * **`login`:** **`player_id`** (UUID from `register`) → **`session_id`**, **`expires_in`**. See **`public/openapi.yaml`**.
+* **`me`:** after `login`, POST **`{"command":"me"}`** with Bearer → **`data`** with **`player_id`**, **`name`**, **`level`**, **`fights`**, **`fights_won`**, **`coins`**, **`skill_1..3`**.
 * **`find_opponents`** (spec §3): after `login` — POST with **`Authorization: Bearer <session_id>`**, body `{"command":"find_opponents"}` → **`data.opponents`** (1–2 objects `player_id`, `name`, same `level`, not you).
 * **Next:** combat start, moves, reward (spec §4–6).
 

@@ -23,7 +23,7 @@ final class SessionConfig
         if ($ttl < 60) {
             $ttl = 60;
         }
-        $memorySyncFile = self::memorySyncFileFromEnv();
+        $memorySyncFile = self::memorySyncFileForDriver($driver);
 
         return new self(
             driver: $driver,
@@ -36,10 +36,11 @@ final class SessionConfig
     }
 
     /**
-     * `SESSION_MEMORY_SYNC_FILE` non-empty → {@see FileSessionStore}; missing or empty → {@see MemorySessionStore}
-     * (when {@see SessionService} uses the `memory` driver). Memcached ignores this field.
+     * Non-empty `SESSION_MEMORY_SYNC_FILE` → {@see FileSessionStore}. Empty value → {@see MemorySessionStore} only.
+     * If the key is unset and `SESSION_DRIVER=memory`, defaults to `.data/session-memory.json` so Bearer works across
+     * workers and container restarts with a volume; use `SESSION_MEMORY_SYNC_FILE=` to force RAM-only.
      */
-    private static function memorySyncFileFromEnv(): ?string
+    private static function memorySyncFileForDriver(string $driver): ?string
     {
         $key = 'SESSION_MEMORY_SYNC_FILE';
         if (\array_key_exists($key, $_ENV)) {
@@ -52,6 +53,9 @@ final class SessionConfig
             $v = (string) $g;
 
             return $v !== '' ? $v : null;
+        }
+        if (strtolower($driver) === 'memory') {
+            return '.data/session-memory.json';
         }
 
         return null;

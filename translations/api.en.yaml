@@ -1,5 +1,5 @@
 # API response and validation messages — English (default / fallback)
-api.bootstrap.message: 'Phase 1.6: POST JSON `command` — `register`, `login`, `find_opponents` (Bearer), `ping`, `health`, session_*. Next: combat (start / attack / prize).'
+api.bootstrap.message: 'Phase 1.7: POST JSON `command` — `register`, `login`, `me` (Bearer), `find_opponents`, `ping`, `health`, session_*. Next: combat (start / attack / prize).'
 api.error.method_not_allowed: 'Use POST with application/json or application/x-www-form-urlencoded.'
 api.error.invalid_json: 'Body must be valid JSON or form-urlencoded fields.'
 api.error.missing_command: 'Field `command` is required.'
@@ -9,7 +9,7 @@ api.error.database_error: 'Database query failed. Apply Phinx migrations so `use
 api.error.unknown_player: 'Unknown or inactive player.'
 api.error.session_issue_disabled: 'Token issuance is disabled (set SESSION_ALLOW_ISSUE=1 in development only).'
 api.error.invalid_user_id: 'Field `user_id` must be a positive integer or a `player_id` UUID from `register`.'
-api.error.unauthorized: 'Authenticate with `login`, then send `Authorization: Bearer <session_id>` (or `session_id` in the JSON body). Tip: with `php -S`, if Bearer is ignored, use header `X-Session-Token: <session_id>` or ensure you log in against the same running server (new `login` = new token).'
+api.error.unauthorized: 'Authenticate with `login`, then send `Authorization: Bearer <session_id>` (or `session_id` in the JSON body). Tip: with `php -S`, if Bearer is ignored, use header `X-Session-Token: <session_id>` or ensure you log in against the same running server (new `login` = new token). If the token vanishes after deploy or between requests, do not set `SESSION_MEMORY_SYNC_FILE=` empty unless you want RAM-only storage; default is a `.data/session-memory.json` file.'
 api.error.character_not_found: 'No character for this account; use `register` first.'
 api.error.no_opponents_available: 'No other active players at your level to challenge.'
 

@@ -31,6 +31,19 @@ Files: **`LoginHandler`**, **`PlayerService::login`**, **`LoginPlayerIdInput`**,
 
 ---
 
+## Current player profile (`me`) — implemented
+
+| Requirement | Implementation |
+|-------------|----------------|
+| Authenticated client reads character | JSON `command` = **`me`**, session via **`Authorization: Bearer`** (or **`session_id`** / **`X-Session-Token`** like other POSTs). |
+| Response | **`player_id`** (UUID) plus TZ character fields: **`name`**, **`level`**, **`fights`**, **`fights_won`**, **`coins`**, **`skill_1`**, **`skill_2`**, **`skill_3`**. |
+| No session | **401** `unauthorized`. |
+| No character row | **404** `character_not_found`. |
+
+Files: **`MeHandler`**, **`CharacterRepository::findGameProfileByUserId`**.
+
+---
+
 ## Choosing an opponent (spec request #3) — implemented
 
 | Requirement | Implementation |

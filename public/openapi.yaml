@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CandyGrill
-  version: 1.7.4
+  version: 1.7.5
   description: |
     **Session:** after `login`, click **Authorize** and paste the 64 hex chars from `data.session_id` (Swagger adds `Authorization: Bearer …`).
 
@@ -24,7 +24,7 @@ paths:
       summary: POST /
       operationId: postCommand
       description: >-
-        For session commands (`find_opponents`, …) click **Authorize** and paste `session_id` from `login` (64 hex, no `Bearer` prefix).
+        For session commands (`me`, `find_opponents`, …) click **Authorize** and paste `session_id` from `login` (64 hex, no `Bearer` prefix).
       parameters:
         - $ref: '#/components/parameters/LangQuery'
       requestBody:
@@ -35,12 +35,14 @@ paths:
               oneOf:
                 - $ref: '#/components/schemas/RegisterRequest'
                 - $ref: '#/components/schemas/LoginRequest'
+                - $ref: '#/components/schemas/MeRequest'
                 - $ref: '#/components/schemas/FindOpponentsRequest'
               discriminator:
                 propertyName: command
                 mapping:
                   register: '#/components/schemas/RegisterRequest'
                   login: '#/components/schemas/LoginRequest'
+                  me: '#/components/schemas/MeRequest'
                   find_opponents: '#/components/schemas/FindOpponentsRequest'
             examples:
               register:
@@ -53,6 +55,10 @@ paths:
                 value:
                   command: login
                   player_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+              me:
+                summary: 'Template: me (needs Bearer session_id)'
+                value:
+                  command: me
               find_opponents:
                 summary: 'Template: find_opponents (needs Bearer session_id)'
                 value:
@@ -63,12 +69,14 @@ paths:
               oneOf:
                 - $ref: '#/components/schemas/RegisterRequest'
                 - $ref: '#/components/schemas/LoginRequest'
+                - $ref: '#/components/schemas/MeRequest'
                 - $ref: '#/components/schemas/FindOpponentsRequest'
               discriminator:
                 propertyName: command
                 mapping:
                   register: '#/components/schemas/RegisterRequest'
                   login: '#/components/schemas/LoginRequest'
+                  me: '#/components/schemas/MeRequest'
                   find_opponents: '#/components/schemas/FindOpponentsRequest'
             examples:
               register:
@@ -81,6 +89,10 @@ paths:
                 value:
                   command: login
                   player_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+              me:
+                summary: 'Template: me (form)'
+                value:
+                  command: me
               find_opponents:
                 summary: 'Template: find_opponents (form)'
                 value:
@@ -95,6 +107,7 @@ paths:
                 oneOf:
                   - $ref: '#/components/schemas/RegisterOk'
                   - $ref: '#/components/schemas/LoginOk'
+                  - $ref: '#/components/schemas/MeOk'
                   - $ref: '#/components/schemas/FindOpponentsOk'
 
         '400':
@@ -183,6 +196,21 @@ components:
           type: string
           enum: [en, ru]
 
+    MeRequest:
+      type: object
+      required: [command]
+      additionalProperties: false
+      properties:
+        command:
+          type: string
+          enum: [me]
+        lang:
+          type: string
+          enum: [en, ru]
+        session_id:
+          type: string
+          description: Optional; otherwise use Authorization Bearer header.
+
     FindOpponentsRequest:
       type: object
       required: [command]
@@ -238,6 +266,60 @@ components:
                 Session token (64 hex); send as `Authorization: Bearer <session_id>`.
             expires_in:
               type: integer
+
+    MeOk:
+      type: object
+      required: [ok, data, lang]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        lang:
+          type: string
+          enum: [en, ru]
+        data:
+          type: object
+          required:
+            - player_id
+            - name
+            - level
+            - fights
+            - fights_won
+            - coins
+            - skill_1
+            - skill_2
+            - skill_3
+          additionalProperties: false
+          properties:
+            player_id:
+              type: string
+              format: uuid
+            name:
+              type: string
+            level:
+              type: integer
+              minimum: 1
+            fights:
+              type: integer
+              minimum: 0
+            fights_won:
+              type: integer
+              minimum: 0
+            coins:
+              type: integer
+              minimum: 0
+            skill_1:
+              type: integer
+              minimum: 0
+              maximum: 50
+            skill_2:
+              type: integer
+              minimum: 0
+              maximum: 50
+            skill_3:
+              type: integer
+              minimum: 0
+              maximum: 50
 
     FindOpponentsOk:
       type: object

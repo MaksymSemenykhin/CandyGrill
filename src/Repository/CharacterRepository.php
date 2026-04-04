@@ -7,10 +7,11 @@ namespace Game\Repository;
 use PDO;
 use PDOException;
 
-final readonly class CharacterRepository
+/** Not `final`/`readonly` so PHPUnit can mock it in handler tests. */
+class CharacterRepository
 {
     public function __construct(
-        private PDO $pdo,
+        private readonly PDO $pdo,
     ) {
     }
 
@@ -63,6 +64,58 @@ final readonly class CharacterRepository
         return [
             'name' => (string) $row['name'],
             'level' => (int) $row['level'],
+        ];
+    }
+
+    /**
+     * Full TZ character row for authenticated `me` (no `player_id`; add via {@see UserRepository}).
+     *
+     * @return array{
+     *   name: string,
+     *   level: int,
+     *   fights: int,
+     *   fights_won: int,
+     *   coins: int,
+     *   skill_1: int,
+     *   skill_2: int,
+     *   skill_3: int
+     * }|null
+     *
+     * @throws PDOException
+     */
+    public function findGameProfileByUserId(int $userId): ?array
+    {
+        if ($userId < 1) {
+            return null;
+        }
+        $stmt = $this->pdo->prepare(
+            'SELECT name, level, fights, fights_won, coins, skill_1, skill_2, skill_3
+             FROM characters WHERE user_id = ? LIMIT 1',
+        );
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!\is_array($row) || !isset(
+            $row['name'],
+            $row['level'],
+            $row['fights'],
+            $row['fights_won'],
+            $row['coins'],
+            $row['skill_1'],
+            $row['skill_2'],
+            $row['skill_3'],
+        )) {
+            return null;
+        }
+
+        return [
+            'name' => (string) $row['name'],
+            'level' => (int) $row['level'],
+            'fights' => (int) $row['fights'],
+            'fights_won' => (int) $row['fights_won'],
+            'coins' => (int) $row['coins'],
+            'skill_1' => (int) $row['skill_1'],
+            'skill_2' => (int) $row['skill_2'],
+            'skill_3' => (int) $row['skill_3'],
         ];
     }
 

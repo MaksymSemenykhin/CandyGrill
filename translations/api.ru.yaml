@@ -1,5 +1,5 @@
 # Russian API and validation messages (Accept-Language: ru or APP_LANG=ru)
-api.bootstrap.message: 'Фаза 1.6: POST JSON `command` — `register`, `login`, `find_opponents` (Bearer), `ping`, `health`, session_*. Далее: бой (старт / удар / приз).'
+api.bootstrap.message: 'Фаза 1.7: POST JSON `command` — `register`, `login`, `me` (Bearer), `find_opponents`, `ping`, `health`, session_*. Далее: бой (старт / удар / приз).'
 api.error.method_not_allowed: 'Используйте POST с телом application/json или application/x-www-form-urlencoded.'
 api.error.invalid_json: 'Тело запроса должно быть корректным JSON или полями form-urlencoded.'
 api.error.missing_command: 'Поле `command` обязательно.'
@@ -9,7 +9,7 @@ api.error.database_error: 'Ошибка запроса к БД. Применит
 api.error.unknown_player: 'Игрок не найден или учётная запись неактивна.'
 api.error.session_issue_disabled: 'Выдача токенов отключена (только разработка: SESSION_ALLOW_ISSUE=1).'
 api.error.invalid_user_id: 'Поле `user_id` должно быть положительным целым или UUID `player_id` из `register`.'
-api.error.unauthorized: 'Сначала `login`, затем заголовок `Authorization: Bearer <session_id>` (или поле `session_id` в JSON). При `php -S`, если Bearer не доходит, используйте заголовок `X-Session-Token: <session_id>` или выполните `login` снова на том же запущенном сервере (каждый `login` выдаёт новый токен).'
+api.error.unauthorized: 'Сначала `login`, затем заголовок `Authorization: Bearer <session_id>` (или поле `session_id` в JSON). При `php -S`, если Bearer не доходит, используйте заголовок `X-Session-Token: <session_id>` или выполните `login` снова на том же запущенном сервере (каждый `login` выдаёт новый токен). Если токен пропал между запросами или после перезапуска, не задавайте пустой `SESSION_MEMORY_SYNC_FILE=` — по умолчанию сессии пишутся в `.data/session-memory.json`.'
 api.error.character_not_found: 'Нет персонажа для этой учётной записи; сначала `register`.'
 api.error.no_opponents_available: 'Нет других активных игроков вашего уровня для поединка.'
 

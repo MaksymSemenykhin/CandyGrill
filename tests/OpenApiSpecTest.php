@@ -32,7 +32,7 @@ final class OpenApiSpecTest extends TestCase
     {
         $this->assertSame('3.0.3', $this->spec['openapi'] ?? null);
         $this->assertSame('CandyGrill', $this->spec['info']['title'] ?? null);
-        $this->assertSame('1.7.4', $this->spec['info']['version'] ?? null);
+        $this->assertSame('1.7.5', $this->spec['info']['version'] ?? null);
     }
 
     public function testPostRootAndSchemasMatchProjectContract(): void
@@ -49,6 +49,9 @@ final class OpenApiSpecTest extends TestCase
         $this->assertIsArray($reg);
         $this->assertArrayHasKey('additionalProperties', $reg);
         $this->assertFalse($reg['additionalProperties']);
+        $disc = $this->spec['paths']['/']['post']['requestBody']['content']['application/json']['schema']['discriminator']['mapping'] ?? null;
+        $this->assertIsArray($disc);
+        $this->assertArrayHasKey('me', $disc);
         $raw = (string) file_get_contents($this->root . '/public/openapi.yaml');
         $this->assertStringNotContainsString("ENUM('active','inactive')", $raw);
     }
