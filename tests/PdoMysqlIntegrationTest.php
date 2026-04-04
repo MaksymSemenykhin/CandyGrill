@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
  */
 final class PdoMysqlIntegrationTest extends TestCase
 {
-    private const PHINX_MIGRATION_COUNT = 6;
+    private const PHINX_MIGRATION_COUNT = 7;
 
     protected function setUp(): void
     {
@@ -76,6 +76,7 @@ final class PdoMysqlIntegrationTest extends TestCase
                 '20260331120104',
                 '20260401120001',
                 '20260404180000',
+                '20260415120000',
             ],
             $versions,
         );

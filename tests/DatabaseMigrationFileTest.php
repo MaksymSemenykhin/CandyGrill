@@ -43,5 +43,11 @@ final class DatabaseMigrationFileTest extends TestCase
         $pub = (string) file_get_contents($pubPath);
         $this->assertStringContainsString('public_id', $pub);
         $this->assertStringContainsString('uq_users_public_id', $pub);
+
+        $combatsPath = $dir . '/20260415120000_alter_combats_public_id_and_claim.php';
+        $this->assertFileExists($combatsPath);
+        $combatsPhp = (string) file_get_contents($combatsPath);
+        $this->assertStringContainsString('results_applied_at', $combatsPhp);
+        $this->assertStringContainsString('uq_combats_public_id', $combatsPhp);
     }
 }

@@ -151,6 +151,6 @@ final class RegisterMysqlIntegrationTest extends TestCase
             return false;
         }
 
-        return $n >= 6;
+        return $n >= 7;
     }
 }

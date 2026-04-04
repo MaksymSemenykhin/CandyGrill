@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Game\Tests;
 
 use Dotenv\Dotenv;
+use Game\Api\Handler\FindOpponentsHandler;
 use Game\Api\Handler\LoginHandler;
 use Game\Api\Handler\MeHandler;
 use Game\Api\Handler\RegisterHandler;
@@ -13,6 +14,7 @@ use Game\Database\DatabaseConnection;
 use Game\Database\PdoFactory;
 use Game\Http\ApiContext;
 use Game\Http\IncomingRequest;
+use Game\MatchPool\MatchPool;
 use Game\Session\SessionService;
 use PDO;
 use PHPUnit\Framework\TestCase;
@@ -31,10 +33,12 @@ final class LoginMysqlIntegrationTest extends TestCase
             $this->markTestSkipped('Set GAME_INTEGRATION_DB=1 to run MySQL login integration tests.');
         }
         SessionService::resetForTesting();
+        MatchPool::resetForTesting();
     }
 
     protected function tearDown(): void
     {
+        MatchPool::resetForTesting();
         SessionService::resetForTesting();
         parent::tearDown();
     }
@@ -95,6 +99,100 @@ final class LoginMysqlIntegrationTest extends TestCase
             $this->assertSame(1, $profile['level']);
         } finally {
             $this->deleteTestUser($pdo, $publicPlayerId);
+        }
+    }
+
+    /**
+     * Full handler chain: register → login → me (same process, file-backed session as in phpunit.xml).
+     */
+    public function testFullScenarioRegisterLoginMe(): void
+    {
+        $pdo = $this->pdoAfterMigrations();
+        $suffix = bin2hex(random_bytes(4));
+        $characterName = "FlowMe_{$suffix}";
+        $publicPlayerId = null;
+        try {
+            $publicPlayerId = $this->registerPlayer($pdo, $characterName);
+            $loginData = $this->loginPlayer($pdo, $publicPlayerId);
+            $this->assertArrayHasKey('session_id', $loginData);
+
+            $session = SessionService::fromEnvironment()->resolveFromBearer(
+                'Bearer ' . $loginData['session_id'],
+            );
+            $this->assertNotNull($session);
+
+            $me = new MeHandler();
+            $meReq = new IncomingRequest('POST', '/', [], '{}');
+            $meCtx = new ApiContext($meReq, ['command' => 'me'], $session);
+            $profile = $me->handle($meCtx, new DatabaseConnection($pdo));
+
+            $this->assertSame($publicPlayerId, $profile['player_id']);
+            $this->assertSame($characterName, $profile['name']);
+            $this->assertSame(1, $profile['level']);
+            $this->assertArrayHasKey('skill_1', $profile);
+            $this->assertArrayHasKey('skill_2', $profile);
+            $this->assertArrayHasKey('skill_3', $profile);
+        } finally {
+            $this->deleteTestUser($pdo, $publicPlayerId);
+        }
+    }
+
+    /**
+     * register → login → me → find_opponents (two other players at same level; pool filled via their logins).
+     */
+    public function testFullScenarioRegisterLoginMeFindOpponents(): void
+    {
+        $pdo = $this->pdoAfterMigrations();
+        $suffix = bin2hex(random_bytes(4));
+        $nameA = "FlowA_{$suffix}";
+        $nameB = "FlowB_{$suffix}";
+        $nameC = "FlowC_{$suffix}";
+        $idA = $idB = $idC = null;
+        try {
+            $idA = $this->registerPlayer($pdo, $nameA);
+            $idB = $this->registerPlayer($pdo, $nameB);
+            $idC = $this->registerPlayer($pdo, $nameC);
+
+            $this->loginPlayer($pdo, $idB);
+            $this->loginPlayer($pdo, $idC);
+            $loginA = $this->loginPlayer($pdo, $idA);
+
+            $session = SessionService::fromEnvironment()->resolveFromBearer(
+                'Bearer ' . $loginA['session_id'],
+            );
+            $this->assertNotNull($session);
+
+            $db = new DatabaseConnection($pdo);
+            $me = new MeHandler();
+            $meCtx = new ApiContext(
+                new IncomingRequest('POST', '/', [], '{}'),
+                ['command' => 'me'],
+                $session,
+            );
+            $profile = $me->handle($meCtx, $db);
+            $this->assertSame($idA, $profile['player_id']);
+            $this->assertSame($nameA, $profile['name']);
+
+            $find = new FindOpponentsHandler();
+            $findCtx = new ApiContext(
+                new IncomingRequest('POST', '/', [], '{}'),
+                ['command' => 'find_opponents'],
+                $session,
+            );
+            $data = $find->handle($findCtx, $db);
+            $this->assertArrayHasKey('opponents', $data);
+            $this->assertCount(2, $data['opponents']);
+            $oppIds = array_column($data['opponents'], 'player_id');
+            $this->assertContains($idB, $oppIds);
+            $this->assertContains($idC, $oppIds);
+            $this->assertNotContains($idA, $oppIds);
+            $oppNames = array_column($data['opponents'], 'name');
+            $this->assertContains($nameB, $oppNames);
+            $this->assertContains($nameC, $oppNames);
+        } finally {
+            $this->deleteTestUser($pdo, $idA);
+            $this->deleteTestUser($pdo, $idB);
+            $this->deleteTestUser($pdo, $idC);
         }
     }
 
@@ -215,6 +313,6 @@ final class LoginMysqlIntegrationTest extends TestCase
             return false;
         }
 
-        return $n >= 6;
+        return $n >= 7;
     }
 }

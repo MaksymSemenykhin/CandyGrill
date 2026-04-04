@@ -6,6 +6,7 @@ namespace Game\Database;
 
 use Game\Repository\ActivePlayerLookup;
 use Game\Repository\CharacterRepository;
+use Game\Repository\CombatRepository;
 use Game\Repository\UserRepository;
 use PDO;
 
@@ -15,6 +16,8 @@ class DatabaseConnection
     private ?UserRepository $users = null;
 
     private ?CharacterRepository $characters = null;
+
+    private ?CombatRepository $combats = null;
 
     public function __construct(
         private readonly PDO $pdo,
@@ -39,5 +42,10 @@ class DatabaseConnection
     public function characters(): CharacterRepository
     {
         return $this->characters ??= new CharacterRepository($this->pdo);
+    }
+
+    public function combats(): CombatRepository
+    {
+        return $this->combats ??= new CombatRepository($this->pdo);
     }
 }
