@@ -41,13 +41,10 @@ final class ProjectLayoutTest extends TestCase
         $this->assertFileExists($this->root . '/public/api-docs/index.html');
     }
 
-    public function testTechnicalSpecDocExists(): void
+    public function testAssignmentSpecDocExists(): void
     {
-        $path = $this->root . '/docs/technical-spec.md';
-        $this->assertFileExists($path);
-        $body = (string) file_get_contents($path);
-        $this->assertStringContainsString('assignment-original-spec', $body);
         $this->assertFileExists($this->root . '/docs/assignment-original-spec.md');
+        $this->assertFileExists($this->root . '/readme.txt');
     }
 
     public function testPhinxConfigAndEntrypointsExist(): void
