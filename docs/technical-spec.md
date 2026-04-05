@@ -59,9 +59,27 @@ Files: **`FindOpponentsHandler`**, **`CharacterRepository`** (level lookup and o
 
 ---
 
-## Remaining spec (§4–6, combat, levels)
+## Starting combat (spec request #4) — implemented
 
-Not implemented — see `docs/assignment-original-spec.md`.
+| Requirement | Implementation |
+|-------------|----------------|
+| Client sends **id of the opponent** | JSON **`opponent_player_id`** — UUID v4 (`player_id` of the opponent). |
+| Session | **`Authorization: Bearer`** (or body **`session_id`**) like other game commands. |
+| Response — **opponent skill values** | nested **`opponent`**: **`player_id`**, **`skill_1`**, **`skill_2`**, **`skill_3`**. |
+| **First attacker random** | Field **`first_striker**: `you` \| `opponent` (`you` = initiator / session holder). |
+| Opponent acts first | **`opponent_first_move`**: `{ skill: 1\|2\|3, points }` (AI); otherwise `null`. |
+| Persist session | **`combat_id`** (UUID) in **`combats`**; optional row in **`combat_moves`** for AI opening; **`state`** JSON for the combat engine. Stats not applied until prize claim (§6). |
+| Same **level** | **400** `opponent_level_mismatch`. |
+| Self-opponent | **400** `cannot_fight_self`. |
+| Unknown / inactive opponent | **404** `opponent_not_found`. |
+
+Files: **`StartCombatHandler`**, **`CombatOpening`**, **`CombatMath`**, **`CombatRepository`**, **`OpponentPlayerIdInput`**, **`CharacterRepository::findInternalIdByUserId`**.
+
+---
+
+## Remaining spec (§5–6, combat moves + prize, levelling)
+
+Attack, claim prize, levelling — not implemented. See `docs/assignment-original-spec.md`.
 
 ---
 

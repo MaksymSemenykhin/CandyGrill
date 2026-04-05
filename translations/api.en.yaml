@@ -1,5 +1,5 @@
 # API response and validation messages — English (default / fallback)
-api.bootstrap.message: 'Phase 1.7: POST JSON `command` — `register`, `login`, `me` (Bearer), `find_opponents`, `ping`, `health`, session_*. Next: combat (start / attack / prize).'
+api.bootstrap.message: 'Phase 1.8: POST JSON `command` — `register`, `login`, `me` (Bearer), `find_opponents`, `start_combat`, `ping`, `health`, session_*. Next: combat attack / prize.'
 api.error.method_not_allowed: 'Use POST with application/json or application/x-www-form-urlencoded.'
 api.error.invalid_json: 'Body must be valid JSON or form-urlencoded fields.'
 api.error.missing_command: 'Field `command` is required.'
@@ -12,6 +12,9 @@ api.error.invalid_user_id: 'Field `user_id` must be a positive integer or a `pla
 api.error.unauthorized: 'Authenticate with `login`, then send `Authorization: Bearer <session_id>` (or `session_id` in the JSON body). Tip: with `php -S`, if Bearer is ignored, use header `X-Session-Token: <session_id>` or ensure you log in against the same running server (new `login` = new token). If the token vanishes after deploy or between requests, do not set `SESSION_MEMORY_SYNC_FILE=` empty unless you want RAM-only storage; default is a `.data/session-memory.json` file.'
 api.error.character_not_found: 'No character for this account; use `register` first.'
 api.error.no_opponents_available: 'No other active players at your level to challenge.'
+api.error.cannot_fight_self: 'You cannot start combat against your own account.'
+api.error.opponent_not_found: 'Opponent not found or inactive.'
+api.error.opponent_level_mismatch: 'Opponent must be at the same character level as you.'
 
 api.command.required: 'Field `command` is required.'
 api.command.invalid: 'Unknown command.'
@@ -23,3 +26,7 @@ api.name.too_long: 'Character `name` must be at most {{ max }} characters.'
 api.player_id.must_be_string: 'Field `player_id` must be a string (UUID from register).'
 api.player_id.empty: 'Field `player_id` must be non-empty.'
 api.player_id.invalid_uuid: 'Field `player_id` must be a valid UUID v4.'
+
+api.opponent_player_id.must_be_string: 'Field `opponent_player_id` must be a string (UUID from register).'
+api.opponent_player_id.empty: 'Field `opponent_player_id` must be non-empty.'
+api.opponent_player_id.invalid_uuid: 'Field `opponent_player_id` must be a valid UUID v4.'

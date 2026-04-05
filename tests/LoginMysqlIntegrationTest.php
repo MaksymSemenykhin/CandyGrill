@@ -6,6 +6,7 @@ namespace Game\Tests;
 
 use Dotenv\Dotenv;
 use Game\Api\Handler\FindOpponentsHandler;
+use Game\Api\Handler\StartCombatHandler;
 use Game\Api\Handler\LoginHandler;
 use Game\Api\Handler\MeHandler;
 use Game\Api\Handler\RegisterHandler;
@@ -20,7 +21,9 @@ use PDO;
 use PHPUnit\Framework\TestCase;
 
 /**
- * TZ login #2 + DB when GAME_INTEGRATION_DB=1.
+ * MySQL integration when GAME_INTEGRATION_DB=1.
+ *
+ * Primary end-to-end flow: {@see testMainScenarioRegisterThroughStartCombat}.
  */
 final class LoginMysqlIntegrationTest extends TestCase
 {
@@ -138,15 +141,15 @@ final class LoginMysqlIntegrationTest extends TestCase
     }
 
     /**
-     * register → login → me → find_opponents (two other players at same level; pool filled via their logins).
+     * Full happy path: register×3 → login (pool warm-up) → me → find_opponents → start_combat vs opponent B.
      */
-    public function testFullScenarioRegisterLoginMeFindOpponents(): void
+    public function testMainScenarioRegisterThroughStartCombat(): void
     {
         $pdo = $this->pdoAfterMigrations();
         $suffix = bin2hex(random_bytes(4));
-        $nameA = "FlowA_{$suffix}";
-        $nameB = "FlowB_{$suffix}";
-        $nameC = "FlowC_{$suffix}";
+        $nameA = "MainA_{$suffix}";
+        $nameB = "MainB_{$suffix}";
+        $nameC = "MainC_{$suffix}";
         $idA = $idB = $idC = null;
         try {
             $idA = $this->registerPlayer($pdo, $nameA);
@@ -163,32 +166,69 @@ final class LoginMysqlIntegrationTest extends TestCase
             $this->assertNotNull($session);
 
             $db = new DatabaseConnection($pdo);
+
             $me = new MeHandler();
-            $meCtx = new ApiContext(
-                new IncomingRequest('POST', '/', [], '{}'),
-                ['command' => 'me'],
-                $session,
+            $profile = $me->handle(
+                new ApiContext(
+                    new IncomingRequest('POST', '/', [], '{}'),
+                    ['command' => 'me'],
+                    $session,
+                ),
+                $db,
             );
-            $profile = $me->handle($meCtx, $db);
             $this->assertSame($idA, $profile['player_id']);
             $this->assertSame($nameA, $profile['name']);
 
             $find = new FindOpponentsHandler();
-            $findCtx = new ApiContext(
-                new IncomingRequest('POST', '/', [], '{}'),
-                ['command' => 'find_opponents'],
-                $session,
+            $data = $find->handle(
+                new ApiContext(
+                    new IncomingRequest('POST', '/', [], '{}'),
+                    ['command' => 'find_opponents'],
+                    $session,
+                ),
+                $db,
             );
-            $data = $find->handle($findCtx, $db);
             $this->assertArrayHasKey('opponents', $data);
             $this->assertCount(2, $data['opponents']);
             $oppIds = array_column($data['opponents'], 'player_id');
             $this->assertContains($idB, $oppIds);
             $this->assertContains($idC, $oppIds);
             $this->assertNotContains($idA, $oppIds);
-            $oppNames = array_column($data['opponents'], 'name');
-            $this->assertContains($nameB, $oppNames);
-            $this->assertContains($nameC, $oppNames);
+
+            $start = new StartCombatHandler();
+            $combat = $start->handle(
+                new ApiContext(
+                    new IncomingRequest('POST', '/', [], '{}'),
+                    [
+                        'command' => 'start_combat',
+                        'opponent_player_id' => $idB,
+                    ],
+                    $session,
+                ),
+                $db,
+            );
+
+            $this->assertArrayHasKey('combat_id', $combat);
+            $this->assertMatchesRegularExpression(
+                '/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/D',
+                strtolower($combat['combat_id']),
+            );
+            $this->assertSame($idB, $combat['opponent']['player_id']);
+            $this->assertContains($combat['first_striker'], ['you', 'opponent']);
+            $this->assertArrayHasKey('skill_1', $combat['opponent']);
+            $this->assertFalse($combat['combat_finished']);
+            if ($combat['first_striker'] === 'opponent') {
+                $this->assertIsArray($combat['opponent_first_move']);
+                $this->assertContains($combat['opponent_first_move']['skill'], [1, 2, 3]);
+            } else {
+                $this->assertNull($combat['opponent_first_move']);
+            }
+
+            $rowStmt = $pdo->prepare('SELECT id, status FROM combats WHERE public_id = ?');
+            $rowStmt->execute([strtolower($combat['combat_id'])]);
+            $row = $rowStmt->fetch(PDO::FETCH_ASSOC);
+            $this->assertIsArray($row);
+            $this->assertSame('active', $row['status']);
         } finally {
             $this->deleteTestUser($pdo, $idA);
             $this->deleteTestUser($pdo, $idB);
@@ -258,8 +298,29 @@ final class LoginMysqlIntegrationTest extends TestCase
         if ($internalUserId <= 0) {
             return;
         }
+        $charStmt = $pdo->prepare('SELECT id FROM characters WHERE user_id = ? LIMIT 1');
+        $charStmt->execute([$internalUserId]);
+        $characterId = (int) $charStmt->fetchColumn();
+        if ($characterId > 0) {
+            $this->deleteCombatsForCharacter($pdo, $characterId);
+        }
         $pdo->prepare('DELETE FROM characters WHERE user_id = ?')->execute([$internalUserId]);
         $pdo->prepare('DELETE FROM users WHERE id = ?')->execute([$internalUserId]);
+    }
+
+    private function deleteCombatsForCharacter(PDO $pdo, int $characterId): void
+    {
+        $idsStmt = $pdo->prepare(
+            'SELECT id FROM combats WHERE participant_a_id = ? OR participant_b_id = ?',
+        );
+        $idsStmt->execute([$characterId, $characterId]);
+        $combatIds = $idsStmt->fetchAll(PDO::FETCH_COLUMN);
+        foreach ($combatIds as $cid) {
+            $pdo->prepare('DELETE FROM combat_moves WHERE combat_id = ?')->execute([(int) $cid]);
+        }
+        $pdo->prepare(
+            'DELETE FROM combats WHERE participant_a_id = ? OR participant_b_id = ?',
+        )->execute([$characterId, $characterId]);
     }
 
     private function clearSessionServiceSingletonOnly(): void

@@ -27,8 +27,8 @@ final class RegisterHandler implements RequiresDatabase
         $input = new RegisterCharacterNameInput($context->body['name'] ?? null);
         ApiValidation::throwUnlessValid(ApiValidation::validator()->validate($input));
 
-        $service = $this->playerService ?? new PlayerService(SessionService::fromEnvironment());
+        $players = $this->playerService ?? new PlayerService(SessionService::fromEnvironment());
 
-        return $service->register($db, $input->trimmedCharacterName());
+        return $players->register($db, $input->trimmedCharacterName());
     }
 }

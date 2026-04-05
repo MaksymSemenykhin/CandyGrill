@@ -9,6 +9,6 @@ namespace Game;
  */
 final class Bootstrap
 {
-    /** 1.7 = `me` profile; 1.6 = `find_opponents`; combat flow next. */
-    public const PHASE = '1.7';
+    /** 1.8 = `start_combat`; 1.7 = `me`; attack/prize next. */
+    public const PHASE = '1.8';
 }

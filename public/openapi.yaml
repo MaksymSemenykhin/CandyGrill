@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CandyGrill
-  version: 1.7.5
+  version: 1.8.0
   description: |
     **Session:** after `login`, click **Authorize** and paste the 64 hex chars from `data.session_id` (Swagger adds `Authorization: Bearer …`).
 
@@ -24,7 +24,7 @@ paths:
       summary: POST /
       operationId: postCommand
       description: >-
-        For session commands (`me`, `find_opponents`, …) click **Authorize** and paste `session_id` from `login` (64 hex, no `Bearer` prefix).
+        For session commands (`me`, `find_opponents`, `start_combat`, …) click **Authorize** and paste `session_id` from `login` (64 hex, no `Bearer` prefix).
       parameters:
         - $ref: '#/components/parameters/LangQuery'
       requestBody:
@@ -37,6 +37,7 @@ paths:
                 - $ref: '#/components/schemas/LoginRequest'
                 - $ref: '#/components/schemas/MeRequest'
                 - $ref: '#/components/schemas/FindOpponentsRequest'
+                - $ref: '#/components/schemas/StartCombatRequest'
               discriminator:
                 propertyName: command
                 mapping:
@@ -44,6 +45,7 @@ paths:
                   login: '#/components/schemas/LoginRequest'
                   me: '#/components/schemas/MeRequest'
                   find_opponents: '#/components/schemas/FindOpponentsRequest'
+                  start_combat: '#/components/schemas/StartCombatRequest'
             examples:
               register:
                 summary: 'Template: register'
@@ -63,6 +65,11 @@ paths:
                 summary: 'Template: find_opponents (needs Bearer session_id)'
                 value:
                   command: find_opponents
+              start_combat:
+                summary: 'Template: start_combat (needs Bearer)'
+                value:
+                  command: start_combat
+                  opponent_player_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
 
           application/x-www-form-urlencoded:
             schema:
@@ -71,6 +78,7 @@ paths:
                 - $ref: '#/components/schemas/LoginRequest'
                 - $ref: '#/components/schemas/MeRequest'
                 - $ref: '#/components/schemas/FindOpponentsRequest'
+                - $ref: '#/components/schemas/StartCombatRequest'
               discriminator:
                 propertyName: command
                 mapping:
@@ -78,6 +86,7 @@ paths:
                   login: '#/components/schemas/LoginRequest'
                   me: '#/components/schemas/MeRequest'
                   find_opponents: '#/components/schemas/FindOpponentsRequest'
+                  start_combat: '#/components/schemas/StartCombatRequest'
             examples:
               register:
                 summary: 'Template: register (form)'
@@ -97,6 +106,11 @@ paths:
                 summary: 'Template: find_opponents (form)'
                 value:
                   command: find_opponents
+              start_combat:
+                summary: 'Template: start_combat (form)'
+                value:
+                  command: start_combat
+                  opponent_player_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
 
       responses:
         '200':
@@ -109,6 +123,7 @@ paths:
                   - $ref: '#/components/schemas/LoginOk'
                   - $ref: '#/components/schemas/MeOk'
                   - $ref: '#/components/schemas/FindOpponentsOk'
+                  - $ref: '#/components/schemas/StartCombatOk'
 
         '400':
           description: Bad request
@@ -219,6 +234,25 @@ components:
         command:
           type: string
           enum: [find_opponents]
+        lang:
+          type: string
+          enum: [en, ru]
+        session_id:
+          type: string
+          description: Optional; otherwise use Authorization Bearer header.
+
+    StartCombatRequest:
+      type: object
+      required: [command, opponent_player_id]
+      additionalProperties: false
+      properties:
+        command:
+          type: string
+          enum: [start_combat]
+        opponent_player_id:
+          type: string
+          format: uuid
+          description: Public id of the opponent (from find_opponents or register).
         lang:
           type: string
           enum: [en, ru]
@@ -350,6 +384,76 @@ components:
                     format: uuid
                   name:
                     type: string
+
+    StartCombatOk:
+      type: object
+      required: [ok, data, lang]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        lang:
+          type: string
+          enum: [en, ru]
+        data:
+          type: object
+          required:
+            - combat_id
+            - opponent
+            - first_striker
+            - your_score
+            - opponent_score
+            - combat_finished
+          additionalProperties: false
+          properties:
+            combat_id:
+              type: string
+              format: uuid
+              description: Use in future attack / claim commands.
+            opponent:
+              type: object
+              required: [player_id, skill_1, skill_2, skill_3]
+              additionalProperties: false
+              properties:
+                player_id:
+                  type: string
+                  format: uuid
+                skill_1:
+                  type: integer
+                  minimum: 0
+                  maximum: 50
+                skill_2:
+                  type: integer
+                  minimum: 0
+                  maximum: 50
+                skill_3:
+                  type: integer
+                  minimum: 0
+                  maximum: 50
+            first_striker:
+              type: string
+              enum: [you, opponent]
+              description: Who attacks first (random).
+            your_score:
+              type: integer
+              minimum: 0
+            opponent_score:
+              type: integer
+              minimum: 0
+            combat_finished:
+              type: boolean
+            opponent_first_move:
+              type: object
+              nullable: true
+              required: [skill, points]
+              additionalProperties: false
+              properties:
+                skill:
+                  type: integer
+                  enum: [1, 2, 3]
+                points:
+                  type: integer
+                  minimum: 0
 
     ErrorBody:
       type: object

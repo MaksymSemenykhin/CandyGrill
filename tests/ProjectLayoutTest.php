@@ -28,7 +28,7 @@ final class ProjectLayoutTest extends TestCase
     public function testBootstrapPhaseMatchesPublicPlaceholder(): void
     {
         $this->assertTrue(class_exists(Bootstrap::class, true));
-        $this->assertSame('1.7', Bootstrap::PHASE);
+        $this->assertSame('1.8', Bootstrap::PHASE);
     }
 
     public function testDockerComposeFileExists(): void

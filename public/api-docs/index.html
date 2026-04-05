@@ -10,7 +10,7 @@
     </style>
 </head>
 <body>
-<p class="cg-swagger-hint"><strong>Session:</strong> <strong>Authorize</strong> → paste hex from <code>login</code> only (Swagger adds the <code>Bearer</code> prefix). For <code>register</code>/<code>login</code>, leave authorization empty.</p>
+<p class="cg-swagger-hint"><strong>Session:</strong> <strong>Authorize</strong> → paste hex from <code>login</code> only (Swagger adds the <code>Bearer</code> prefix). For <code>register</code>/<code>login</code>, leave authorization empty. Flow: <code>register</code> → <code>login</code> → Authorize → <code>me</code>, <code>find_opponents</code>, <code>start_combat</code> (body: <code>opponent_player_id</code>).</p>
 <div id="swagger-ui"></div>
 <script src="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui-bundle.js" crossorigin></script>
 <script>

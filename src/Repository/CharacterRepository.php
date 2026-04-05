@@ -43,6 +43,26 @@ class CharacterRepository
     }
 
     /**
+     * Primary key `characters.id` for FKs such as {@see CombatRepository}.
+     *
+     * @throws PDOException
+     */
+    public function findInternalIdByUserId(int $userId): ?int
+    {
+        if ($userId < 1) {
+            return null;
+        }
+        $stmt = $this->pdo->prepare('SELECT id FROM characters WHERE user_id = ? LIMIT 1');
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!\is_array($row) || !isset($row['id'])) {
+            return null;
+        }
+
+        return (int) $row['id'];
+    }
+
+    /**
      * @return array{name: string, level: int}|null
      *
      * @throws PDOException

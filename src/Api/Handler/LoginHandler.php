@@ -8,8 +8,8 @@ use Game\Api\Validation\ApiValidation;
 use Game\Api\Validation\LoginPlayerIdInput;
 use Game\Database\DatabaseConnection;
 use Game\Http\ApiContext;
-use Game\Config\MatchPoolConfig;
-use Game\MatchPool\MatchPool;
+use Game\Service\MatchmakingService;
+use Game\Service\MatchmakingServiceInterface;
 use Game\Service\PlayerService;
 use Game\Service\PlayerServiceInterface;
 use Game\Session\SessionService;
@@ -21,6 +21,7 @@ final readonly class LoginHandler implements RequiresDatabase
 {
     public function __construct(
         private ?PlayerServiceInterface $playerService = null,
+        private ?MatchmakingServiceInterface $matchmaking = null,
     ) {
     }
 
@@ -31,26 +32,14 @@ final readonly class LoginHandler implements RequiresDatabase
     {
         $input = new LoginPlayerIdInput($context->body['player_id'] ?? null);
         ApiValidation::throwUnlessValid(ApiValidation::validator()->validate($input));
+        $playerId = $input->normalizedPlayerId();
 
-        $service = $this->playerService ?? new PlayerService(SessionService::fromEnvironment());
-        $result = $service->login($db->activePlayers(), $input->normalizedPlayerId());
+        $players = $this->playerService ?? new PlayerService(SessionService::fromEnvironment());
+        $sessionPayload = $players->login($db->activePlayers(), $playerId);
 
-        if (MatchPoolConfig::fromEnvironment()->enabled) {
-            $uid = $db->users()->findActiveInternalIdByPublicId($input->normalizedPlayerId());
-            if ($uid !== null) {
-                $char = $db->characters()->findNameAndLevelByUserId($uid);
-                if ($char !== null) {
-                    MatchPool::fromEnvironment()->register(
-                        $uid,
-                        $input->normalizedPlayerId(),
-                        $char['name'],
-                        $char['level'],
-                        $result['expires_in'],
-                    );
-                }
-            }
-        }
+        ($this->matchmaking ?? MatchmakingService::fromEnvironment())
+            ->registerLoggedInPlayer($db, $playerId, $sessionPayload['expires_in']);
 
-        return $result;
+        return $sessionPayload;
     }
 }
