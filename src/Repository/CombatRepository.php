@@ -73,18 +73,7 @@ class CombatRepository
      */
     public function findByPublicId(string $publicId): ?array
     {
-        $stmt = $this->pdo->prepare(
-            'SELECT id, public_id, participant_a_id, participant_b_id, status, winner_character_id,
-                    state, started_at, finished_at, results_applied_at
-             FROM combats WHERE public_id = ? LIMIT 1',
-        );
-        $stmt->execute([strtolower($publicId)]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!\is_array($row)) {
-            return null;
-        }
-
-        return $this->hydrateRow($row);
+        return $this->fetchCombatRow('public_id = ? LIMIT 1', [strtolower($publicId)]);
     }
 
     /**
@@ -96,18 +85,7 @@ class CombatRepository
      */
     public function findByPublicIdForUpdate(string $publicId): ?array
     {
-        $stmt = $this->pdo->prepare(
-            'SELECT id, public_id, participant_a_id, participant_b_id, status, winner_character_id,
-                    state, started_at, finished_at, results_applied_at
-             FROM combats WHERE public_id = ? LIMIT 1 FOR UPDATE',
-        );
-        $stmt->execute([strtolower($publicId)]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!\is_array($row)) {
-            return null;
-        }
-
-        return $this->hydrateRow($row);
+        return $this->fetchCombatRow('public_id = ? LIMIT 1 FOR UPDATE', [strtolower($publicId)]);
     }
 
     /**
@@ -122,18 +100,8 @@ class CombatRepository
         if ($combatId < 1) {
             return null;
         }
-        $stmt = $this->pdo->prepare(
-            'SELECT id, public_id, participant_a_id, participant_b_id, status, winner_character_id,
-                    state, started_at, finished_at, results_applied_at
-             FROM combats WHERE id = ? LIMIT 1',
-        );
-        $stmt->execute([$combatId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!\is_array($row)) {
-            return null;
-        }
 
-        return $this->hydrateRow($row);
+        return $this->fetchCombatRow('id = ? LIMIT 1', [$combatId]);
     }
 
     /**
@@ -148,32 +116,20 @@ class CombatRepository
         ?int $winnerCharacterId,
         ?string $finishedAt,
     ): void {
-        if ($state === null) {
-            $stmt = $this->pdo->prepare(
-                'UPDATE combats SET status = :status, winner_character_id = :w, finished_at = COALESCE(:finished, finished_at)
-                 WHERE id = :id',
-            );
-            $stmt->execute([
-                'status' => $status,
-                'w' => $winnerCharacterId,
-                'finished' => $finishedAt,
-                'id' => $combatId,
-            ]);
-
-            return;
-        }
-        $stmt = $this->pdo->prepare(
-            'UPDATE combats SET status = :status, state = :state, winner_character_id = :w,
-                 finished_at = COALESCE(:finished, finished_at)
-             WHERE id = :id',
-        );
-        $stmt->execute([
+        $setParts = ['status = :status', 'winner_character_id = :w', 'finished_at = COALESCE(:finished, finished_at)'];
+        $params = [
             'status' => $status,
-            'state' => json_encode($state, JSON_THROW_ON_ERROR),
             'w' => $winnerCharacterId,
             'finished' => $finishedAt,
             'id' => $combatId,
-        ]);
+        ];
+        if ($state !== null) {
+            $setParts[] = 'state = :state';
+            $params['state'] = json_encode($state, JSON_THROW_ON_ERROR);
+        }
+        $sql = 'UPDATE combats SET ' . implode(', ', $setParts) . ' WHERE id = :id';
+        $stmt = $this->pdo->prepare($sql);
+        $stmt->execute($params);
     }
 
     /**
@@ -210,6 +166,32 @@ class CombatRepository
             'actor' => $actorCharacterId,
             'payload' => json_encode($payload, JSON_THROW_ON_ERROR),
         ]);
+    }
+
+    /**
+     * @param non-empty-string $whereAndRestSql trailing SQL after {@code WHERE} (e.g. {@code public_id = ? LIMIT 1}).
+     * @param list<int|string> $bind
+     *
+     * @return array<string, mixed>|null
+     */
+    private function fetchCombatRow(string $whereAndRestSql, array $bind): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT ' . $this->combatSelectList() . ' FROM combats WHERE ' . $whereAndRestSql,
+        );
+        $stmt->execute($bind);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!\is_array($row)) {
+            return null;
+        }
+
+        return $this->hydrateRow($row);
+    }
+
+    private function combatSelectList(): string
+    {
+        return 'id, public_id, participant_a_id, participant_b_id, status, winner_character_id,
+                state, started_at, finished_at, results_applied_at';
     }
 
     /**

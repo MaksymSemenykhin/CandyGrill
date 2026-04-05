@@ -66,14 +66,8 @@ class UserRepository implements ActivePlayerLookup
         if (!self::isValidUuidV4String($publicId)) {
             return null;
         }
-        $stmt = $this->pdo->prepare('SELECT id FROM users WHERE public_id = ? LIMIT 1');
-        $stmt->execute([strtolower($publicId)]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!\is_array($row) || !isset($row['id'])) {
-            return null;
-        }
 
-        return (int) $row['id'];
+        return $this->fetchInternalIdByPublicId(strtolower($publicId), null);
     }
 
     /**
@@ -84,10 +78,24 @@ class UserRepository implements ActivePlayerLookup
         if (!self::isValidUuidV4String($publicId)) {
             return null;
         }
-        $stmt = $this->pdo->prepare(
-            'SELECT id FROM users WHERE public_id = ? AND status = ? LIMIT 1',
-        );
-        $stmt->execute([strtolower($publicId), UserStatus::ACTIVE]);
+
+        return $this->fetchInternalIdByPublicId(strtolower($publicId), UserStatus::ACTIVE);
+    }
+
+    /**
+     * @param non-empty-string $normalizedPublicId lowercased UUID v4
+     */
+    private function fetchInternalIdByPublicId(string $normalizedPublicId, ?string $requiredStatus): ?int
+    {
+        if ($requiredStatus === null) {
+            $stmt = $this->pdo->prepare('SELECT id FROM users WHERE public_id = ? LIMIT 1');
+            $stmt->execute([$normalizedPublicId]);
+        } else {
+            $stmt = $this->pdo->prepare(
+                'SELECT id FROM users WHERE public_id = ? AND status = ? LIMIT 1',
+            );
+            $stmt->execute([$normalizedPublicId, $requiredStatus]);
+        }
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!\is_array($row) || !isset($row['id'])) {
             return null;

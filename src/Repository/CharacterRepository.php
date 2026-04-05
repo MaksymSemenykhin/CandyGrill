@@ -11,6 +11,12 @@ use PDOException;
 /** Not `final`/`readonly` so PHPUnit can mock it in handler tests. */
 class CharacterRepository
 {
+    private const SELECT_CHAR_ID_BY_USER = 'id';
+
+    private const SELECT_CHAR_NAME_LEVEL_BY_USER = 'name, level';
+
+    private const SELECT_CHAR_GAME_PROFILE_BY_USER = 'name, level, fights, fights_won, coins, skill_1, skill_2, skill_3';
+
     public function __construct(
         private readonly PDO $pdo,
     ) {
@@ -50,13 +56,8 @@ class CharacterRepository
      */
     public function findInternalIdByUserId(int $userId): ?int
     {
-        if ($userId < 1) {
-            return null;
-        }
-        $stmt = $this->pdo->prepare('SELECT id FROM characters WHERE user_id = ? LIMIT 1');
-        $stmt->execute([$userId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!\is_array($row) || !isset($row['id'])) {
+        $row = $this->fetchCharacterAssocByUserId($userId, self::SELECT_CHAR_ID_BY_USER);
+        if ($row === null || !isset($row['id'])) {
             return null;
         }
 
@@ -70,15 +71,8 @@ class CharacterRepository
      */
     public function findNameAndLevelByUserId(int $userId): ?array
     {
-        if ($userId < 1) {
-            return null;
-        }
-        $stmt = $this->pdo->prepare(
-            'SELECT name, level FROM characters WHERE user_id = ? LIMIT 1',
-        );
-        $stmt->execute([$userId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!\is_array($row) || !isset($row['name'], $row['level'])) {
+        $row = $this->fetchCharacterAssocByUserId($userId, self::SELECT_CHAR_NAME_LEVEL_BY_USER);
+        if ($row === null || !isset($row['name'], $row['level'])) {
             return null;
         }
 
@@ -106,16 +100,8 @@ class CharacterRepository
      */
     public function findGameProfileByUserId(int $userId): ?array
     {
-        if ($userId < 1) {
-            return null;
-        }
-        $stmt = $this->pdo->prepare(
-            'SELECT name, level, fights, fights_won, coins, skill_1, skill_2, skill_3
-             FROM characters WHERE user_id = ? LIMIT 1',
-        );
-        $stmt->execute([$userId]);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        if (!\is_array($row) || !isset(
+        $row = $this->fetchCharacterAssocByUserId($userId, self::SELECT_CHAR_GAME_PROFILE_BY_USER);
+        if ($row === null || !isset(
             $row['name'],
             $row['level'],
             $row['fights'],
@@ -203,6 +189,25 @@ class CharacterRepository
         }
 
         return $out;
+    }
+
+    /**
+     * @param non-empty-string $selectColumns trusted fragment ({@see self::SELECT_CHAR_*_BY_USER} only)
+     *
+     * @return array<string, mixed>|null
+     */
+    private function fetchCharacterAssocByUserId(int $userId, string $selectColumns): ?array
+    {
+        if ($userId < 1) {
+            return null;
+        }
+        $stmt = $this->pdo->prepare(
+            'SELECT ' . $selectColumns . ' FROM characters WHERE user_id = ? LIMIT 1',
+        );
+        $stmt->execute([$userId]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return \is_array($row) ? $row : null;
     }
 
     /**
