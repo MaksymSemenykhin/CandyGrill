@@ -57,7 +57,6 @@ services:
       - "${FORWARD_MEMCACHED_PORT:-11211}:11211"
 
   # Демо / сдача задания: просмотр MySQL в браузере. Не оставляйте открытым на публичном прод-сервере.
-  # «Только чтение»: задайте PMA_MYSQL_USER / PMA_MYSQL_PASSWORD (пользователь MySQL с GRANT SELECT), иначе — как DB_*.
   phpmyadmin:
     image: phpmyadmin:latest
     ports:
@@ -65,8 +64,8 @@ services:
     environment:
       PMA_HOST: mysql
       PMA_PORT: 3306
-      PMA_USER: "${PMA_MYSQL_USER:-${DB_USERNAME:-root}}"
-      PMA_PASSWORD: "${PMA_MYSQL_PASSWORD:-${DB_PASSWORD:-password}}"
+      PMA_USER: "${DB_USERNAME:-root}"
+      PMA_PASSWORD: "${DB_PASSWORD:-password}"
     depends_on:
       mysql:
         condition: service_healthy
