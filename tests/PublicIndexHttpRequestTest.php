@@ -52,18 +52,42 @@ final class PublicIndexHttpRequestTest extends TestCase
         self::$baseUrl = 'http://' . $addr;
 
         $cmd = [PHP_BINARY, '-S', $addr, '-t', $public];
+        // If stdout/stderr are pipes and never read, the buffer fills and `php -S` blocks on log writes.
+        $serverLogSink = \str_starts_with(\PHP_OS_FAMILY, 'Windows') ? 'NUL' : '/dev/null';
         $desc = [
             0 => ['pipe', 'r'],
-            1 => ['pipe', 'w'],
-            2 => ['pipe', 'w'],
+            1 => ['file', $serverLogSink, 'a'],
+            2 => ['file', $serverLogSink, 'a'],
         ];
+
+        /**
+         * Windows replaces the process environment when {@see proc_open} receives an env array;
+         * PHPUnit sets {@code <env>} in phpunit.xml on {@code $_ENV} — merge those into a full copy so the server sees them.
+         *
+         * @var null|array<string, string>
+         */
+        $envForServer = null;
+        $allEnv = getenv();
+        if (\is_array($allEnv) && $allEnv !== []) {
+            $envForServer = [];
+            foreach ($allEnv as $k => $v) {
+                if (\is_string($k) && (\is_string($v) || \is_int($v) || \is_float($v))) {
+                    $envForServer[$k] = (string) $v;
+                }
+            }
+            foreach (['SESSION_ALLOW_ISSUE', 'SESSION_DRIVER', 'SESSION_MEMORY_SYNC_FILE', 'MATCH_POOL_SYNC_FILE', 'APP_LANG'] as $key) {
+                if (isset($_ENV[$key]) && (\is_string($_ENV[$key]) || \is_int($_ENV[$key]))) {
+                    $envForServer[$key] = (string) $_ENV[$key];
+                }
+            }
+        }
 
         self::$serverProcess = @proc_open(
             $cmd,
             $desc,
             self::$serverPipes,
             dirname(__DIR__),
-            null,
+            $envForServer,
             ['bypass_shell' => true],
         );
 
@@ -73,8 +97,6 @@ final class PublicIndexHttpRequestTest extends TestCase
 
         self::$startedOwnServer = true;
         fclose(self::$serverPipes[0]);
-        stream_set_blocking(self::$serverPipes[1], false);
-        stream_set_blocking(self::$serverPipes[2], false);
 
         self::waitForServer();
     }
@@ -177,7 +199,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
         $this->assertApiEnvelope($data, 'ru');
-        $this->assertStringContainsString('Фаза', (string) $data['message']);
+        $this->assertStringContainsString('Игра:', (string) $data['message']);
     }
 
     /**
@@ -189,7 +211,7 @@ final class PublicIndexHttpRequestTest extends TestCase
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
         $this->assertApiEnvelope($data, 'ru');
-        $this->assertStringContainsString('Фаза', (string) $data['message']);
+        $this->assertStringContainsString('Игра:', (string) $data['message']);
     }
 
     /**
@@ -585,6 +607,10 @@ final class PublicIndexHttpRequestTest extends TestCase
     private function httpPostWithBody(string $path, string $body, array $extraHeaders = []): string
     {
         $url = self::$baseUrl . $path;
+        if (\function_exists('curl_init')) {
+            return $this->httpPostWithBodyCurl($url, $body, $extraHeaders);
+        }
+
         $headerLines = ['Content-Type: application/json'];
         foreach ($extraHeaders as $name => $value) {
             $headerLines[] = $name . ': ' . $value;
@@ -605,6 +631,39 @@ final class PublicIndexHttpRequestTest extends TestCase
     }
 
     /**
+     * @param non-empty-string      $url
+     * @param array<string, string> $extraHeaders
+     */
+    private function httpPostWithBodyCurl(string $url, string $body, array $extraHeaders): string
+    {
+        // Built-in `php -S` mishandles Expect: 100-continue; cURL sends it by default for POST bodies.
+        $headerList = ['Content-Type: application/json', 'Expect:'];
+        foreach ($extraHeaders as $name => $value) {
+            $headerList[] = $name . ': ' . $value;
+        }
+        $ch = curl_init($url);
+        $this->assertNotFalse($ch);
+        try {
+            curl_setopt_array($ch, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_HTTPHEADER => $headerList,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 5,
+            ]);
+            $raw = curl_exec($ch);
+            $this->assertNotFalse(
+                $raw,
+                'HTTP POST failed: ' . $url . (curl_error($ch) !== '' ? ' (' . curl_error($ch) . ')' : ''),
+            );
+
+            return (string) $raw;
+        } finally {
+            curl_close($ch);
+        }
+    }
+
+    /**
      * @param array<string, mixed>              $body
      * @param array<string, string> $extraHeaders
      * @return array{0: int, 1: string} HTTP status and body
@@ -612,6 +671,32 @@ final class PublicIndexHttpRequestTest extends TestCase
     private function httpPostJsonWithStatus(string $path, array $body, array $extraHeaders = []): array
     {
         $url = self::$baseUrl . $path;
+        $encoded = json_encode($body, JSON_THROW_ON_ERROR);
+        if (\function_exists('curl_init')) {
+            $headerList = ['Content-Type: application/json', 'Expect:'];
+            foreach ($extraHeaders as $name => $value) {
+                $headerList[] = $name . ': ' . $value;
+            }
+            $ch = curl_init($url);
+            $this->assertNotFalse($ch);
+            try {
+                curl_setopt_array($ch, [
+                    CURLOPT_POST => true,
+                    CURLOPT_POSTFIELDS => $encoded,
+                    CURLOPT_HTTPHEADER => $headerList,
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_TIMEOUT => 5,
+                ]);
+                $raw = curl_exec($ch);
+                $this->assertNotFalse($raw, 'HTTP POST failed: ' . $url);
+                $status = (int) curl_getinfo($ch, CURLINFO_RESPONSE_CODE);
+
+                return [$status, (string) $raw];
+            } finally {
+                curl_close($ch);
+            }
+        }
+
         $headerLines = ['Content-Type: application/json'];
         foreach ($extraHeaders as $name => $value) {
             $headerLines[] = $name . ': ' . $value;
@@ -620,7 +705,7 @@ final class PublicIndexHttpRequestTest extends TestCase
             'http' => [
                 'method' => 'POST',
                 'header' => implode("\r\n", $headerLines) . "\r\n",
-                'content' => json_encode($body, JSON_THROW_ON_ERROR),
+                'content' => $encoded,
                 'timeout' => 5.0,
                 'ignore_errors' => true,
             ],
