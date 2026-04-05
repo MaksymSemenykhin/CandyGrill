@@ -29,7 +29,7 @@ final class CombatOpening
         array $opponentSkills,
         int $opponentCharacterId,
     ): array {
-        $first = random_int(0, 1) === 0 ? 'initiator' : 'opponent';
+        $first = random_int(0, 1) === 0 ? CombatSide::INITIATOR : CombatSide::OPPONENT;
 
         $state = [
             'v' => self::STATE_VERSION,
@@ -43,15 +43,15 @@ final class CombatOpening
             'last_opponent_skill' => null,
             'completed_strikes' => 0,
             'next_move_sequence' => 1,
-            'finished' => false,
-            'winner_side' => null,
+            CombatStateKey::FINISHED => false,
+            CombatStateKey::WINNER_SIDE => null,
         ];
 
         $opponentFirstMove = null;
         $finished = false;
         $winnerCharacterId = null;
 
-        if ($first === 'opponent') {
+        if ($first === CombatSide::OPPONENT) {
             $skill = CombatAi::chooseSkill(null, null);
             $atk = CombatMath::skillValue($opponentSkills, $skill);
             $def = CombatMath::skillValue($initiatorSkills, $skill);
@@ -65,7 +65,7 @@ final class CombatOpening
             if ($points > 100) {
                 $finished = true;
                 $winnerCharacterId = $opponentCharacterId;
-                $resolved = CombatResolution::finishWithWinner($state, 'opponent', $opponentCharacterId);
+                $resolved = CombatResolution::finishWithWinner($state, CombatSide::OPPONENT, $opponentCharacterId);
                 $state = $resolved['state'];
             }
         }
@@ -73,7 +73,7 @@ final class CombatOpening
         return [
             'state' => $state,
             'opponent_first_move' => $opponentFirstMove,
-            'finished' => $finished,
+            CombatStateKey::FINISHED => $finished,
             'winner_character_id' => $winnerCharacterId,
         ];
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Game\Service;
 
+use Game\Api\ApiError;
 use Game\Api\ApiHttpException;
 use Game\Database\DatabaseConnection;
 
@@ -14,7 +15,7 @@ final class GameProfileService implements GameProfileServiceInterface
         $playerId = $db->users()->findPublicIdByInternalId($userId);
         $char = $db->characters()->findGameProfileByUserId($userId);
         if ($playerId === null || $char === null) {
-            throw new ApiHttpException(404, 'character_not_found', 'api.error.character_not_found');
+            throw ApiHttpException::fromApiError(404, ApiError::CHARACTER_NOT_FOUND);
         }
 
         return ['player_id' => $playerId] + $char;

@@ -4,10 +4,15 @@ declare(strict_types=1);
 
 namespace Game\Service;
 
+use Game\Api\ApiError;
 use Game\Api\ApiHttpException;
+use Game\Api\ApiJsonField;
 use Game\Combat\CombatAi;
 use Game\Combat\CombatMath;
+use Game\Combat\CombatRecordStatus;
+use Game\Combat\CombatSide;
 use Game\Combat\CombatResolution;
+use Game\Combat\CombatStateKey;
 use Game\Combat\CombatStrikeRules;
 use Game\Combat\CombatTurnOrder;
 use Game\Database\DatabaseConnection;
@@ -23,13 +28,13 @@ final class CombatAttackService implements CombatAttackServiceInterface
             CombatInitiatorAccess::assertOpenForAttack($row);
             $state = CombatInitiatorAccess::stateForCombatEngine($row);
             CombatInitiatorAccess::assertInitiatorMatchesParticipants($db, $row, $state, $initiatorUserId);
-            if (!empty($state['finished'])) {
-                throw new ApiHttpException(409, 'combat_finished', 'api.error.combat_finished');
+            if (!empty($state[CombatStateKey::FINISHED])) {
+                throw ApiHttpException::fromApiError(409, ApiError::COMBAT_FINISHED);
             }
 
             $completedBefore = (int) $state['completed_strikes'];
-            if (CombatTurnOrder::sideForStrikeIndex($completedBefore, (string) $state['first']) !== 'initiator') {
-                throw new ApiHttpException(409, 'not_your_turn', 'api.error.not_your_turn');
+            if (CombatTurnOrder::sideForStrikeIndex($completedBefore, (string) $state['first']) !== CombatSide::INITIATOR) {
+                throw ApiHttpException::fromApiError(409, ApiError::NOT_YOUR_TURN);
             }
 
             try {
@@ -39,7 +44,7 @@ final class CombatAttackService implements CombatAttackServiceInterface
                     $state['last_opponent_skill'] !== null ? (int) $state['last_opponent_skill'] : null,
                 );
             } catch (\InvalidArgumentException) {
-                throw new ApiHttpException(400, 'illegal_skill', 'api.error.illegal_skill');
+                throw ApiHttpException::fromApiError(400, ApiError::ILLEGAL_SKILL);
             }
 
             $oppUserId = (int) $state['opponent_user_id'];
@@ -51,7 +56,7 @@ final class CombatAttackService implements CombatAttackServiceInterface
 
             [$state, $yourPoints] = $this->deliverStrike(
                 $state,
-                'initiator',
+                CombatSide::INITIATOR,
                 $skill,
                 $initSkills,
                 $oppSkills,
@@ -59,8 +64,8 @@ final class CombatAttackService implements CombatAttackServiceInterface
 
             $seq = (int) $state['next_move_sequence'];
             $db->combats()->appendMove((int) $row['id'], $seq, $initiatorCharId, [
-                'side' => 'initiator',
-                'skill' => $skill,
+                'side' => CombatSide::INITIATOR,
+                ApiJsonField::SKILL => $skill,
                 'points' => $yourPoints,
             ]);
             ++$state['next_move_sequence'];
@@ -91,7 +96,7 @@ final class CombatAttackService implements CombatAttackServiceInterface
             );
             [$state, $aiPoints] = $this->deliverStrike(
                 $state,
-                'opponent',
+                CombatSide::OPPONENT,
                 $aiSkill,
                 $initSkills,
                 $oppSkills,
@@ -99,13 +104,13 @@ final class CombatAttackService implements CombatAttackServiceInterface
 
             $seq2 = (int) $state['next_move_sequence'];
             $db->combats()->appendMove((int) $row['id'], $seq2, $opponentCharId, [
-                'side' => 'opponent',
-                'skill' => $aiSkill,
+                'side' => CombatSide::OPPONENT,
+                ApiJsonField::SKILL => $aiSkill,
                 'points' => $aiPoints,
             ]);
             ++$state['next_move_sequence'];
 
-            $opponentPayload = ['skill' => $aiSkill, 'points' => $aiPoints];
+            $opponentPayload = [ApiJsonField::SKILL => $aiSkill, 'points' => $aiPoints];
 
             $maybe2 = $this->maybeInstantFinish($state, $initiatorCharId, $opponentCharId);
             if ($maybe2 !== null) {
@@ -125,7 +130,7 @@ final class CombatAttackService implements CombatAttackServiceInterface
                 return $this->attackResponse($skill, $yourPoints, $opponentPayload, $state);
             }
 
-            $db->combats()->updateProgress((int) $row['id'], 'active', $state, null, null);
+            $db->combats()->updateProgress((int) $row['id'], CombatRecordStatus::ACTIVE, $state, null, null);
             $pdo->commit();
 
             return $this->attackResponse($skill, $yourPoints, $opponentPayload, $state);
@@ -149,7 +154,7 @@ final class CombatAttackService implements CombatAttackServiceInterface
         array $initiatorSkills,
         array $opponentSkills,
     ): array {
-        if ($attackerSide === 'initiator') {
+        if ($attackerSide === CombatSide::INITIATOR) {
             $atk = CombatMath::skillValue($initiatorSkills, $skill);
             $def = CombatMath::skillValue($opponentSkills, $skill);
             $pts = CombatMath::strikePoints($atk, $def);
@@ -177,10 +182,10 @@ final class CombatAttackService implements CombatAttackServiceInterface
     private function maybeInstantFinish(array $state, int $initiatorCharId, int $opponentCharId): ?array
     {
         if ((int) $state['score_initiator'] > 100) {
-            return CombatResolution::finishWithWinner($state, 'initiator', $initiatorCharId);
+            return CombatResolution::finishWithWinner($state, CombatSide::INITIATOR, $initiatorCharId);
         }
         if ((int) $state['score_opponent'] > 100) {
-            return CombatResolution::finishWithWinner($state, 'opponent', $opponentCharId);
+            return CombatResolution::finishWithWinner($state, CombatSide::OPPONENT, $opponentCharId);
         }
 
         return null;
@@ -192,7 +197,7 @@ final class CombatAttackService implements CombatAttackServiceInterface
     private function saveCombatEnd(DatabaseConnection $db, int $combatId, array $state, ?int $winnerCharacterId): void
     {
         $ts = (new \DateTimeImmutable('now'))->format('Y-m-d H:i:s.v');
-        $db->combats()->updateProgress($combatId, 'finished', $state, $winnerCharacterId, $ts);
+        $db->combats()->updateProgress($combatId, CombatRecordStatus::FINISHED, $state, $winnerCharacterId, $ts);
     }
 
     /**
@@ -202,7 +207,7 @@ final class CombatAttackService implements CombatAttackServiceInterface
     {
         $row = $db->characters()->findGameProfileByUserId($userId);
         if ($row === null) {
-            throw new ApiHttpException(500, 'character_not_found', 'api.error.character_not_found');
+            throw ApiHttpException::fromApiError(500, ApiError::CHARACTER_NOT_FOUND);
         }
 
         return [
@@ -224,15 +229,15 @@ final class CombatAttackService implements CombatAttackServiceInterface
         ?array $opponentMove,
         array $state,
     ): array {
-        $finished = !empty($state['finished']);
+        $finished = !empty($state[CombatStateKey::FINISHED]);
 
         return [
-            'your_move' => ['skill' => $yourSkill, 'points' => $yourPoints],
+            'your_move' => [ApiJsonField::SKILL => $yourSkill, 'points' => $yourPoints],
             'opponent_move' => $opponentMove,
             'your_score' => (int) $state['score_initiator'],
             'opponent_score' => (int) $state['score_opponent'],
-            'combat_finished' => $finished,
-            'coins_won' => $finished ? CombatResolution::initiatorCoinsWhenFinished($state) : null,
+            ApiJsonField::COMBAT_FINISHED => $finished,
+            ApiJsonField::COINS_WON => $finished ? CombatResolution::initiatorCoinsWhenFinished($state) : null,
         ];
     }
 }

@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace Game\Service;
 
+use Game\Api\ApiError;
 use Game\Api\ApiHttpException;
+use Game\Api\ApiJsonField;
 use Game\Combat\CombatOpening;
+use Game\Combat\CombatRecordStatus;
 use Game\Combat\CombatResolution;
+use Game\Combat\CombatSide;
+use Game\Combat\CombatStateKey;
 use Game\Database\DatabaseConnection;
 use Game\Repository\UserRepository;
 
@@ -46,32 +51,32 @@ final class CombatStartService implements CombatStartServiceInterface
     ): array {
         $selfPub = $db->users()->findPublicIdByInternalId($initiatorUserId);
         if ($selfPub !== null && $selfPub === $opponentPlayerId) {
-            throw new ApiHttpException(400, 'cannot_fight_self', 'api.error.cannot_fight_self');
+            throw ApiHttpException::fromApiError(400, ApiError::CANNOT_FIGHT_SELF);
         }
 
         $opponentUserId = $db->users()->findActiveInternalIdByPublicId($opponentPlayerId);
         if ($opponentUserId === null) {
-            throw new ApiHttpException(404, 'opponent_not_found', 'api.error.opponent_not_found');
+            throw ApiHttpException::fromApiError(404, ApiError::OPPONENT_NOT_FOUND);
         }
 
         $selfRow = $db->characters()->findGameProfileByUserId($initiatorUserId);
         if ($selfRow === null) {
-            throw new ApiHttpException(404, 'character_not_found', 'api.error.character_not_found');
+            throw ApiHttpException::fromApiError(404, ApiError::CHARACTER_NOT_FOUND);
         }
 
         $oppRow = $db->characters()->findGameProfileByUserId($opponentUserId);
         if ($oppRow === null) {
-            throw new ApiHttpException(404, 'opponent_not_found', 'api.error.opponent_not_found');
+            throw ApiHttpException::fromApiError(404, ApiError::OPPONENT_NOT_FOUND);
         }
 
         if ($selfRow['level'] !== $oppRow['level']) {
-            throw new ApiHttpException(400, 'opponent_level_mismatch', 'api.error.opponent_level_mismatch');
+            throw ApiHttpException::fromApiError(400, ApiError::OPPONENT_LEVEL_MISMATCH);
         }
 
         $initiatorCharId = $db->characters()->findInternalIdByUserId($initiatorUserId);
         $opponentCharId = $db->characters()->findInternalIdByUserId($opponentUserId);
         if ($initiatorCharId === null || $opponentCharId === null) {
-            throw new ApiHttpException(404, 'character_not_found', 'api.error.character_not_found');
+            throw ApiHttpException::fromApiError(404, ApiError::CHARACTER_NOT_FOUND);
         }
 
         return [
@@ -113,7 +118,7 @@ final class CombatStartService implements CombatStartServiceInterface
             $publicId,
             $ctx['initiatorCharId'],
             $ctx['opponentCharId'],
-            $opening['finished'] ? 'finished' : 'active',
+            $opening[CombatStateKey::FINISHED] ? CombatRecordStatus::FINISHED : CombatRecordStatus::ACTIVE,
             $opening['state'],
         );
 
@@ -126,13 +131,13 @@ final class CombatStartService implements CombatStartServiceInterface
             );
         }
 
-        if (!$opening['finished']) {
+        if (!$opening[CombatStateKey::FINISHED]) {
             return;
         }
 
         $combats->updateProgress(
             $internalId,
-            'finished',
+            CombatRecordStatus::FINISHED,
             null,
             $opening['winner_character_id'],
             (new \DateTimeImmutable('now'))->format('Y-m-d H:i:s.v'),
@@ -152,10 +157,10 @@ final class CombatStartService implements CombatStartServiceInterface
         string $publicId,
     ): array {
         $state = $opening['state'];
-        $first = $state['first'] === 'initiator' ? 'you' : 'opponent';
+        $first = $state['first'] === CombatSide::INITIATOR ? 'you' : 'opponent';
 
         return [
-            'combat_id' => $publicId,
+            ApiJsonField::COMBAT_ID => $publicId,
             'opponent' => [
                 'player_id' => $opponentPlayerId,
                 'skill_1' => $oppRow['skill_1'],
@@ -165,8 +170,8 @@ final class CombatStartService implements CombatStartServiceInterface
             'first_striker' => $first,
             'your_score' => $state['score_initiator'],
             'opponent_score' => $state['score_opponent'],
-            'combat_finished' => $opening['finished'],
-            'coins_won' => $opening['finished']
+            ApiJsonField::COMBAT_FINISHED => $opening[CombatStateKey::FINISHED],
+            ApiJsonField::COINS_WON => $opening[CombatStateKey::FINISHED]
                 ? CombatResolution::initiatorCoinsWhenFinished($state)
                 : null,
             'opponent_first_move' => $opening['opponent_first_move'],

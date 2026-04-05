@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Game\Service;
 
+use Game\Api\ApiError;
 use Game\Api\ApiHttpException;
 use Game\Config\MatchPoolConfig;
 use Game\Config\SessionConfig;
@@ -57,14 +58,14 @@ final class MatchmakingService implements MatchmakingServiceInterface
     {
         $self = $db->characters()->findNameAndLevelByUserId($userId);
         if ($self === null) {
-            throw new ApiHttpException(404, 'character_not_found', 'api.error.character_not_found');
+            throw ApiHttpException::fromApiError(404, ApiError::CHARACTER_NOT_FOUND);
         }
 
         $opponents = $this->candidatesFromPool($db, $userId, $self);
         $opponents = $this->mergeSqlBackfill($db, $userId, $self, $opponents);
 
         if ($opponents === []) {
-            throw new ApiHttpException(404, 'no_opponents_available', 'api.error.no_opponents_available');
+            throw ApiHttpException::fromApiError(404, ApiError::NO_OPPONENTS_AVAILABLE);
         }
 
         return ['opponents' => $opponents];

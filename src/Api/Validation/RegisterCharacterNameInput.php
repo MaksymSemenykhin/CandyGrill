@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Game\Api\Validation;
 
+use Game\Api\ApiError;
+use Game\Api\ApiJsonField;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
 
@@ -24,8 +26,8 @@ final readonly class RegisterCharacterNameInput
     {
         if (!\is_string($this->name)) {
             $context->buildViolation('api.name.must_be_string')
-                ->atPath('name')
-                ->setCode('invalid_request')
+                ->atPath(ApiJsonField::NAME)
+                ->setCode(ApiError::INVALID_REQUEST)
                 ->addViolation();
 
             return;
@@ -34,8 +36,8 @@ final readonly class RegisterCharacterNameInput
         $trimmed = trim($this->name);
         if ($trimmed === '') {
             $context->buildViolation('api.name.empty')
-                ->atPath('name')
-                ->setCode('invalid_name')
+                ->atPath(ApiJsonField::NAME)
+                ->setCode(ApiError::INVALID_NAME)
                 ->addViolation();
 
             return;
@@ -45,8 +47,8 @@ final readonly class RegisterCharacterNameInput
         if ($len > self::MAX_CODEPOINTS) {
             $context->buildViolation('api.name.too_long')
                 ->setParameter('{{ max }}', (string) self::MAX_CODEPOINTS)
-                ->atPath('name')
-                ->setCode('invalid_name')
+                ->atPath(ApiJsonField::NAME)
+                ->setCode(ApiError::INVALID_NAME)
                 ->addViolation();
         }
     }

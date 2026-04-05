@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Game\Api\Handler;
 
+use Game\Api\ApiJsonField;
 use Game\Api\Validation\ApiValidation;
 use Game\Api\Validation\RegisterCharacterNameInput;
 use Game\Database\DatabaseConnection;
@@ -24,7 +25,7 @@ final class RegisterHandler implements RequiresDatabase
 
     public function handle(ApiContext $context, DatabaseConnection $db): array
     {
-        $input = new RegisterCharacterNameInput($context->body['name'] ?? null);
+        $input = new RegisterCharacterNameInput($context->body[ApiJsonField::NAME] ?? null);
         ApiValidation::throwUnlessValid(ApiValidation::validator()->validate($input));
 
         $players = $this->playerService ?? new PlayerService(SessionService::fromEnvironment());

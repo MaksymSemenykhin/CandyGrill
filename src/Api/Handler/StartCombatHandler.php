@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Game\Api\Handler;
 
+use Game\Api\ApiJsonField;
 use Game\Api\Validation\ApiValidation;
 use Game\Api\Validation\OpponentPlayerIdInput;
 use Game\Database\DatabaseConnection;
@@ -26,7 +27,7 @@ final class StartCombatHandler implements RequiresDatabase
 
     public function handle(ApiContext $context, DatabaseConnection $db): array
     {
-        $input = new OpponentPlayerIdInput($context->body['opponent_player_id'] ?? null);
+        $input = new OpponentPlayerIdInput($context->body[ApiJsonField::OPPONENT_PLAYER_ID] ?? null);
         ApiValidation::throwUnlessValid(ApiValidation::validator()->validate($input));
 
         $svc = $this->combatStart ?? new CombatStartService();

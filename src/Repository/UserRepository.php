@@ -87,7 +87,7 @@ class UserRepository implements ActivePlayerLookup
         $stmt = $this->pdo->prepare(
             'SELECT id FROM users WHERE public_id = ? AND status = ? LIMIT 1',
         );
-        $stmt->execute([strtolower($publicId), 'active']);
+        $stmt->execute([strtolower($publicId), UserStatus::ACTIVE]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         if (!\is_array($row) || !isset($row['id'])) {
             return null;

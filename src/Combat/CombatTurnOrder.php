@@ -14,11 +14,11 @@ final class CombatTurnOrder
     /** Who delivers strike number {@code $completedStrikes} (0-based, before that strike is applied). */
     public static function sideForStrikeIndex(int $completedStrikes, string $first): string
     {
-        $initiatorOpens = $first === 'initiator';
+        $initiatorOpens = $first === CombatSide::INITIATOR;
         $initiatorStrikes = $initiatorOpens
             ? ($completedStrikes % 2 === 0)
             : ($completedStrikes % 2 === 1);
 
-        return $initiatorStrikes ? 'initiator' : 'opponent';
+        return $initiatorStrikes ? CombatSide::INITIATOR : CombatSide::OPPONENT;
     }
 }

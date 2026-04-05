@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Game\Service;
 
+use Game\Api\ApiError;
 use Game\Api\ApiHttpException;
+use Game\Api\ApiJsonField;
 use Game\Combat\CombatResolution;
+use Game\Combat\CombatSide;
+use Game\Combat\CombatStateKey;
 use Game\Database\DatabaseConnection;
 
 final class CombatClaimService implements CombatClaimServiceInterface
@@ -23,28 +27,28 @@ final class CombatClaimService implements CombatClaimServiceInterface
             $row = CombatInitiatorAccess::requireCombatRow($db->combats()->findByPublicIdForUpdate($combatId));
             CombatInitiatorAccess::assertReadyForClaim($row);
             $state = CombatInitiatorAccess::stateForCombatEngine($row);
-            if (empty($state['finished'])) {
-                throw new ApiHttpException(500, 'combat_state_invalid', 'api.error.combat_state_invalid');
+            if (empty($state[CombatStateKey::FINISHED])) {
+                throw ApiHttpException::fromApiError(500, ApiError::COMBAT_STATE_INVALID);
             }
             CombatInitiatorAccess::assertInitiatorMatchesParticipants($db, $row, $state, $initiatorUserId);
 
             $before = $profiles->getMe($db, $initiatorUserId);
 
             $coinsDelta = CombatResolution::initiatorCoinsWhenFinished($state);
-            $won = ($state['winner_side'] ?? null) === 'initiator';
+            $won = ($state['winner_side'] ?? null) === CombatSide::INITIATOR;
             $winInc = $won ? 1 : 0;
 
             $db->characters()->applyInitiatorCombatClaim($initiatorUserId, $winInc, $coinsDelta);
 
             $marked = $db->combats()->markResultsApplied((int) $row['id']);
             if ($marked !== 1) {
-                throw new ApiHttpException(409, 'prize_already_claimed', 'api.error.prize_already_claimed');
+                throw ApiHttpException::fromApiError(409, ApiError::PRIZE_ALREADY_CLAIMED);
             }
 
             $after = $profiles->getMe($db, $initiatorUserId);
 
             return [
-                'combat_id' => strtolower($combatId),
+                ApiJsonField::COMBAT_ID => strtolower($combatId),
                 'won' => $won,
                 'coins_received' => $coinsDelta,
                 'changes' => [

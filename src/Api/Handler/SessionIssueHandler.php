@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Game\Api\Handler;
 
+use Game\Api\ApiError;
 use Game\Api\ApiHttpException;
 use Game\Config\DatabaseConfig;
 use Game\Config\SessionConfig;
@@ -20,11 +21,7 @@ final class SessionIssueHandler implements CommandHandler
     {
         $config = SessionConfig::fromEnvironment();
         if (!$config->allowIssue) {
-            throw new ApiHttpException(
-                403,
-                'session_issue_disabled',
-                'api.error.session_issue_disabled',
-            );
+            throw ApiHttpException::fromApiError(403, ApiError::SESSION_ISSUE_DISABLED);
         }
 
         $internalUserId = $this->resolveIssueUserId($context->body['user_id'] ?? null);
@@ -56,11 +53,7 @@ final class SessionIssueHandler implements CommandHandler
             }
         }
 
-        throw new ApiHttpException(
-            400,
-            'invalid_user_id',
-            'api.error.invalid_user_id',
-        );
+        throw ApiHttpException::fromApiError(400, ApiError::INVALID_USER_ID);
     }
 
     private function formatUserIdForApiResponse(int $internalUserId): int|string

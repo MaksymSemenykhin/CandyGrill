@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Game\Api\Validation;
 
+use Game\Api\ApiError;
+use Game\Api\ApiJsonField;
 use Game\Repository\UserRepository;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
@@ -24,8 +26,8 @@ final readonly class CombatAttackInput
     {
         if (!\is_string($this->combatId)) {
             $context->buildViolation('api.combat_id.must_be_string')
-                ->atPath('combat_id')
-                ->setCode('invalid_request')
+                ->atPath(ApiJsonField::COMBAT_ID)
+                ->setCode(ApiError::INVALID_REQUEST)
                 ->addViolation();
 
             return;
@@ -33,15 +35,15 @@ final readonly class CombatAttackInput
         $cid = trim($this->combatId);
         if ($cid === '' || !UserRepository::isValidUuidV4String($cid)) {
             $context->buildViolation('api.combat_id.invalid_uuid')
-                ->atPath('combat_id')
-                ->setCode('invalid_combat_id')
+                ->atPath(ApiJsonField::COMBAT_ID)
+                ->setCode(ApiError::INVALID_COMBAT_ID)
                 ->addViolation();
         }
 
         if (!\is_int($this->skill) && !(\is_string($this->skill) && is_numeric($this->skill))) {
             $context->buildViolation('api.combat_skill.must_be_int')
-                ->atPath('skill')
-                ->setCode('invalid_skill')
+                ->atPath(ApiJsonField::SKILL)
+                ->setCode(ApiError::INVALID_SKILL)
                 ->addViolation();
 
             return;
@@ -49,8 +51,8 @@ final readonly class CombatAttackInput
         $n = (int) $this->skill;
         if ($n < 1 || $n > 3) {
             $context->buildViolation('api.combat_skill.range')
-                ->atPath('skill')
-                ->setCode('invalid_skill')
+                ->atPath(ApiJsonField::SKILL)
+                ->setCode(ApiError::INVALID_SKILL)
                 ->addViolation();
         }
     }

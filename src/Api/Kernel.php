@@ -52,7 +52,7 @@ final class Kernel
         if ($req->method !== 'POST') {
             $this->sendJson(405, [
                 'ok' => false,
-                'error' => ['code' => 'method_not_allowed', 'message' => $this->i18n->trans('api.error.method_not_allowed', [], $preBodyLang)],
+                'error' => ['code' => ApiError::METHOD_NOT_ALLOWED, 'message' => $this->i18n->trans('api.error.method_not_allowed', [], $preBodyLang)],
             ]);
 
             return;
@@ -64,7 +64,7 @@ final class Kernel
         } catch (\JsonException) {
             $this->sendJson(400, [
                 'ok' => false,
-                'error' => ['code' => 'invalid_json', 'message' => $this->i18n->trans('api.error.invalid_json', [], $preBodyLang)],
+                'error' => ['code' => ApiError::INVALID_JSON, 'message' => $this->i18n->trans('api.error.invalid_json', [], $preBodyLang)],
             ]);
 
             return;
@@ -72,16 +72,16 @@ final class Kernel
 
         $this->i18n->setLocale(LocaleResolver::resolve($body, $req));
 
-        if (!\array_key_exists('command', $body) || !\is_string($body['command'])) {
+        if (!\array_key_exists(ApiJsonField::COMMAND, $body) || !\is_string($body[ApiJsonField::COMMAND])) {
             $this->sendJson(400, [
                 'ok' => false,
-                'error' => ['code' => 'missing_command', 'message' => $this->i18n->trans('api.error.missing_command')],
+                'error' => ['code' => ApiError::MISSING_COMMAND, 'message' => $this->i18n->trans('api.error.missing_command')],
             ]);
 
             return;
         }
 
-        $commandBody = new CommandBody(command: $body['command']);
+        $commandBody = new CommandBody(command: $body[ApiJsonField::COMMAND]);
         $violations = ApiValidation::validator()->validate($commandBody);
         if (\count($violations) > 0) {
             $this->sendJson(400, [
@@ -98,7 +98,7 @@ final class Kernel
         if ($handler === null) {
             $this->sendJson(400, [
                 'ok' => false,
-                'error' => ['code' => 'unknown_command', 'message' => $this->i18n->trans('api.error.unknown_command')],
+                'error' => ['code' => ApiError::UNKNOWN_COMMAND, 'message' => $this->i18n->trans('api.error.unknown_command')],
             ]);
 
             return;
@@ -114,7 +114,7 @@ final class Kernel
         }
         if ($session === null) {
             $bodyToken = null;
-            foreach (['session_id', 'access_token'] as $bodyTokenKey) {
+            foreach ([ApiJsonField::SESSION_ID, ApiJsonField::ACCESS_TOKEN] as $bodyTokenKey) {
                 $candidate = $body[$bodyTokenKey] ?? null;
                 if (\is_string($candidate) && $candidate !== '') {
                     $bodyToken = $candidate;
@@ -135,7 +135,7 @@ final class Kernel
                     $this->sendJson(503, [
                         'ok' => false,
                         'error' => [
-                            'code' => 'database_not_configured',
+                            'code' => ApiError::DATABASE_NOT_CONFIGURED,
                             'message' => $this->i18n->trans('api.error.database_not_configured'),
                         ],
                     ]);
@@ -159,7 +159,7 @@ final class Kernel
         } catch (\PDOException $e) {
             \error_log('Game API PDO: ' . $e->getMessage());
             $error = [
-                'code' => 'database_error',
+                'code' => ApiError::DATABASE_ERROR,
                 'message' => $this->i18n->trans('api.error.database_error'),
             ];
             if (self::debugResponsesEnabled()) {

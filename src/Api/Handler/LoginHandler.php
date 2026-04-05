@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Game\Api\Handler;
 
+use Game\Api\ApiJsonField;
 use Game\Api\Validation\ApiValidation;
 use Game\Api\Validation\LoginPlayerIdInput;
 use Game\Database\DatabaseConnection;
@@ -30,7 +31,7 @@ final readonly class LoginHandler implements RequiresDatabase
      */
     public function handle(ApiContext $context, DatabaseConnection $db): array
     {
-        $input = new LoginPlayerIdInput($context->body['player_id'] ?? null);
+        $input = new LoginPlayerIdInput($context->body[ApiJsonField::PLAYER_ID] ?? null);
         ApiValidation::throwUnlessValid(ApiValidation::validator()->validate($input));
         $playerId = $input->normalizedPlayerId();
 

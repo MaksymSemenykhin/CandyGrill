@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Game\Service;
 
+use Game\Api\ApiError;
 use Game\Api\ApiHttpException;
 use Game\Database\DatabaseConnection;
 use Game\Repository\ActivePlayerLookup;
@@ -59,11 +60,7 @@ final class PlayerService implements PlayerServiceInterface
     {
         $internalId = $lookup->findActiveInternalIdByPublicId($normalizedPlayerId);
         if ($internalId === null) {
-            throw new ApiHttpException(
-                401,
-                'unknown_player',
-                'api.error.unknown_player',
-            );
+            throw ApiHttpException::fromApiError(401, ApiError::UNKNOWN_PLAYER);
         }
 
         $issued = $this->sessions->issueToken($internalId);

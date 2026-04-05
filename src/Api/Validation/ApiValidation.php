@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Game\Api\Validation;
 
+use Game\Api\ApiError;
 use Game\Api\ApiHttpException;
 use Symfony\Component\Validator\ConstraintViolationInterface;
 use Symfony\Component\Validator\ConstraintViolationListInterface;
@@ -55,7 +56,7 @@ final class ApiValidation
             $code = $violation->getCode();
         }
         if ($code === null || $code === '') {
-            $code = 'unknown_command';
+            $code = ApiError::UNKNOWN_COMMAND;
         }
 
         return ['code' => $code, 'message' => (string) $violation->getMessage()];

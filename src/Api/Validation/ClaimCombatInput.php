@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Game\Api\Validation;
 
+use Game\Api\ApiError;
+use Game\Api\ApiJsonField;
 use Game\Repository\UserRepository;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
@@ -23,8 +25,8 @@ final readonly class ClaimCombatInput
     {
         if (!\is_string($this->combatId)) {
             $context->buildViolation('api.combat_id.must_be_string')
-                ->atPath('combat_id')
-                ->setCode('invalid_request')
+                ->atPath(ApiJsonField::COMBAT_ID)
+                ->setCode(ApiError::INVALID_REQUEST)
                 ->addViolation();
 
             return;
@@ -32,8 +34,8 @@ final readonly class ClaimCombatInput
         $cid = trim($this->combatId);
         if ($cid === '' || !UserRepository::isValidUuidV4String($cid)) {
             $context->buildViolation('api.combat_id.invalid_uuid')
-                ->atPath('combat_id')
-                ->setCode('invalid_combat_id')
+                ->atPath(ApiJsonField::COMBAT_ID)
+                ->setCode(ApiError::INVALID_COMBAT_ID)
                 ->addViolation();
         }
     }

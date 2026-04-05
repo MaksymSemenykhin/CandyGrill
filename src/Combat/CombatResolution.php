@@ -21,8 +21,8 @@ final class CombatResolution
         string $winnerSide,
         int $winnerCharacterId,
     ): array {
-        $state['finished'] = true;
-        $state['winner_side'] = $winnerSide;
+        $state[CombatStateKey::FINISHED] = true;
+        $state[CombatStateKey::WINNER_SIDE] = $winnerSide;
 
         return ['state' => $state, 'winner_character_id' => $winnerCharacterId];
     }
@@ -43,14 +43,14 @@ final class CombatResolution
         $so = (int) $state['score_opponent'];
 
         if ($si > $so) {
-            return self::finishWithWinner($state, 'initiator', $initiatorCharacterId);
+            return self::finishWithWinner($state, CombatSide::INITIATOR, $initiatorCharacterId);
         }
         if ($so > $si) {
-            return self::finishWithWinner($state, 'opponent', $opponentCharacterId);
+            return self::finishWithWinner($state, CombatSide::OPPONENT, $opponentCharacterId);
         }
 
-        $winnerSide = random_int(0, 1) === 0 ? 'initiator' : 'opponent';
-        $winnerChar = $winnerSide === 'initiator' ? $initiatorCharacterId : $opponentCharacterId;
+        $winnerSide = random_int(0, 1) === 0 ? CombatSide::INITIATOR : CombatSide::OPPONENT;
+        $winnerChar = $winnerSide === CombatSide::INITIATOR ? $initiatorCharacterId : $opponentCharacterId;
 
         return self::finishWithWinner($state, $winnerSide, $winnerChar);
     }
@@ -58,7 +58,7 @@ final class CombatResolution
     /** Coins the initiator will receive on `claim` if they won (0 if lost). */
     public static function initiatorCoinsWhenFinished(array $state): int
     {
-        if (($state['winner_side'] ?? null) === 'initiator') {
+        if (($state[CombatStateKey::WINNER_SIDE] ?? null) === CombatSide::INITIATOR) {
             return self::WINNER_COINS;
         }
 

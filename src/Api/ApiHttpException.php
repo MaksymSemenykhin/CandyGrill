@@ -16,4 +16,10 @@ final class ApiHttpException extends \RuntimeException
     ) {
         parent::__construct($message);
     }
+
+    /** @param non-empty-string $errorCode {@see ApiError} */
+    public static function fromApiError(int $httpStatus, string $errorCode): self
+    {
+        return new self($httpStatus, $errorCode, ApiError::domainMessage($errorCode));
+    }
 }

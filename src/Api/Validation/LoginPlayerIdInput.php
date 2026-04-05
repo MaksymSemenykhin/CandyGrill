@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Game\Api\Validation;
 
+use Game\Api\ApiError;
+use Game\Api\ApiJsonField;
 use Game\Repository\UserRepository;
 use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Validator\Context\ExecutionContextInterface;
@@ -23,8 +25,8 @@ final readonly class LoginPlayerIdInput
     {
         if (!\is_string($this->playerId)) {
             $context->buildViolation('api.player_id.must_be_string')
-                ->atPath('player_id')
-                ->setCode('invalid_request')
+                ->atPath(ApiJsonField::PLAYER_ID)
+                ->setCode(ApiError::INVALID_REQUEST)
                 ->addViolation();
 
             return;
@@ -33,8 +35,8 @@ final readonly class LoginPlayerIdInput
         $trimmed = trim($this->playerId);
         if ($trimmed === '') {
             $context->buildViolation('api.player_id.empty')
-                ->atPath('player_id')
-                ->setCode('invalid_player_id')
+                ->atPath(ApiJsonField::PLAYER_ID)
+                ->setCode(ApiError::INVALID_PLAYER_ID)
                 ->addViolation();
 
             return;
@@ -42,8 +44,8 @@ final readonly class LoginPlayerIdInput
 
         if (!UserRepository::isValidUuidV4String($trimmed)) {
             $context->buildViolation('api.player_id.invalid_uuid')
-                ->atPath('player_id')
-                ->setCode('invalid_player_id')
+                ->atPath(ApiJsonField::PLAYER_ID)
+                ->setCode(ApiError::INVALID_PLAYER_ID)
                 ->addViolation();
         }
     }

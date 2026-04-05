@@ -17,8 +17,8 @@ final class CombatStateNormalizer
         if (isset($state['completed_strikes'], $state['next_move_sequence'])) {
             return $state;
         }
-        $first = (string) ($state['first'] ?? 'initiator');
-        if ($first === 'opponent') {
+        $first = (string) ($state['first'] ?? CombatSide::INITIATOR);
+        if ($first === CombatSide::OPPONENT) {
             $state['completed_strikes'] = 1;
             $state['next_move_sequence'] = 2;
         } else {

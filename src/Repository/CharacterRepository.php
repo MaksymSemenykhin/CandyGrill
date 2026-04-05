@@ -171,7 +171,7 @@ class CharacterRepository
         $bind = [
             'level' => $level,
             'exclude_user' => $excludeUserId,
-            'status' => 'active',
+            'status' => UserStatus::ACTIVE,
         ];
         foreach ($extraUuids as $i => $uuid) {
             $p = 'ex_pid_' . $i;
