@@ -1,10 +1,10 @@
 CandyGrill
 ==========
 
-Сервер простой онлайн-игры на PHP и MySQL: клиент шлёт POST, в теле JSON — команда (`command`), ответ — JSON.
+Simple online game server in PHP and MySQL. The client sends POST requests with a JSON body; the command is in the `command` field; responses are JSON.
 
-Текст тестового задания: `docs/assignment-original-spec.md`.
+The employer assignment wording: `docs/assignment-original-spec.md`.
 
-Примечания к решению
--------------------
-По условию задания в поставку входят исходный код (включая тесты), дамп MySQL и этот readme.
+Author notes
+------------
+Per the assignment, the submission should include the source code (including tests), a MySQL database dump, and this readme.
