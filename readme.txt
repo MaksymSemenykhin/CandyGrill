@@ -24,7 +24,7 @@ PHP + MySQL + optional Memcached; wrappers **`sail`** / **`sail.bat`** (not Lara
 2. `./sail build && ./sail up -d` (or `sail.bat` on Windows CMD)
 3. `./sail composer install` · `./sail composer migrate`
 4. App: `http://127.0.0.1:8080/` (port from `APP_PORT` in `.env` — это Nginx с коротким кэшем для анонимных GET; дальше прокси на `php -S`)
-5. (Опционально для проверяющего) **phpMyAdmin:** `http://127.0.0.1:8081/` — порт `PHPMYADMIN_PORT`, вход `DB_USERNAME` / `DB_PASSWORD`. На продакшене лучше не публиковать.
+5. (Опционально для проверяющего) **phpMyAdmin:** `http://127.0.0.1:8081/` — см. `PHPMYADMIN_PORT`, `PMA_MYSQL_*` и `database/snippets/mysql_readonly_reviewer.sql.example` для входа «только чтение». На продакшене лучше не публиковать.
 
 WSL on Windows drives: see Compose notes in repo; prefer Docker Desktop WSL2 integration.
 
