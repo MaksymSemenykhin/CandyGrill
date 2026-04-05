@@ -33,6 +33,11 @@ final class OpenApiSpecTest extends TestCase
         $this->assertSame('3.0.3', $this->spec['openapi'] ?? null);
         $this->assertSame('CandyGrill', $this->spec['info']['title'] ?? null);
         $this->assertSame('2.1.0', $this->spec['info']['version'] ?? null);
+
+        $servers = $this->spec['servers'] ?? null;
+        $this->assertIsArray($servers);
+        $this->assertIsArray($servers[0] ?? null);
+        $this->assertSame('/', $servers[0]['url'] ?? null, 'Server URL must be relative so Swagger hits the current host.');
     }
 
     public function testPostRootAndSchemasMatchProjectContract(): void

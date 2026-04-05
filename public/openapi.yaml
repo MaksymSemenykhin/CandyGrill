@@ -7,8 +7,9 @@ info:
 
     For `register` / `login`, call the API without Authorize (or click Logout). Flow: `start_combat` → `combat_attack` (until finished) → `claim` (initiator).
 
+# Relative URL: Swagger UI and clients use the same host you opened in the browser (VPS IP, localhost, etc.).
 servers:
-  - url: http://127.0.0.1:8080
+  - url: /
 
 security:
   - sessionBearer: []
