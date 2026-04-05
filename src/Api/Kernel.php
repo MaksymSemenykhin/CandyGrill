@@ -20,6 +20,8 @@ use Game\Session\SessionService;
 /** Resolves POST `command` to `Api/Handler/{Studly}Handler.php`. */
 final class Kernel
 {
+    private ?IncomingRequest $corsRequest = null;
+
     public static function boot(string $projectRoot): self
     {
         Dotenv::createImmutable($projectRoot)->safeLoad();
@@ -37,8 +39,16 @@ final class Kernel
     public function run(): void
     {
         $req = IncomingRequest::fromGlobals();
+        $this->corsRequest = $req;
         $preBodyLang = LocaleResolver::resolve(null, $req);
         $this->i18n->setLocale($preBodyLang);
+
+        if ($req->method === 'OPTIONS') {
+            $this->emitCorsHeaders();
+            http_response_code(204);
+
+            return;
+        }
 
         if ($req->method === 'GET' && ($req->path === '/' || $req->path === '/index.php')) {
             $this->sendJson(200, [
@@ -182,10 +192,77 @@ final class Kernel
      */
     private function sendJson(int $status, array $payload): void
     {
+        $this->emitCorsHeaders();
+
         $payload['lang'] = $this->i18n->getLocale();
 
         \header('Content-Type: application/json; charset=utf-8', true, $status);
         echo \json_encode($payload, JSON_THROW_ON_ERROR);
+    }
+
+    /**
+     * Cross-origin browser clients (e.g. Swagger UI on another host). Disabled when {@code CORS_ALLOW_ORIGIN} is set but empty in {@code .env}.
+     * If unset, defaults to {@code *}. Use a comma-separated allowlist for production.
+     */
+    private function emitCorsHeaders(): void
+    {
+        $policy = self::corsAllowOriginPolicy();
+        if ($policy === null) {
+            return;
+        }
+
+        $req = $this->corsRequest;
+        $origin = $req?->header('Origin');
+        if ($policy === '*') {
+            \header('Access-Control-Allow-Origin: *');
+        } elseif ($origin !== null && $origin !== '' && self::corsOriginInAllowlist($origin, $policy)) {
+            \header('Access-Control-Allow-Origin: ' . $origin);
+            \header('Vary: Origin', false);
+        } else {
+            return;
+        }
+
+        \header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+        \header('Access-Control-Allow-Headers: Content-Type, Authorization, X-Session-Token, Accept-Language, X-Requested-With');
+        \header('Access-Control-Max-Age: 86400');
+    }
+
+    /**
+     * @return non-empty-string|null {@code *}, allowlist string, or null when CORS is off
+     */
+    private static function corsAllowOriginPolicy(): ?string
+    {
+        if (\array_key_exists('CORS_ALLOW_ORIGIN', $_ENV)) {
+            $v = \trim((string) $_ENV['CORS_ALLOW_ORIGIN']);
+
+            return $v === '' ? null : $v;
+        }
+        $g = \getenv('CORS_ALLOW_ORIGIN');
+        if ($g !== false) {
+            $v = \trim((string) $g);
+
+            return $v === '' ? null : $v;
+        }
+
+        return '*';
+    }
+
+    /**
+     * @param non-empty-string $origin
+     * @param non-empty-string $policy {@code *} or comma-separated origins
+     */
+    private static function corsOriginInAllowlist(string $origin, string $policy): bool
+    {
+        if ($policy === '*') {
+            return true;
+        }
+        foreach (\array_map('trim', \explode(',', $policy)) as $allowed) {
+            if ($allowed !== '' && $origin === $allowed) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
