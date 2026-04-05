@@ -5,13 +5,15 @@ declare(strict_types=1);
 namespace Game\Tests;
 
 use Dotenv\Dotenv;
-use Game\Api\Handler\FindOpponentsHandler;
+use Game\Api\ApiHttpException;
 use Game\Api\Handler\ClaimHandler;
 use Game\Api\Handler\CombatAttackHandler;
-use Game\Api\Handler\StartCombatHandler;
+use Game\Api\Handler\FindOpponentsHandler;
 use Game\Api\Handler\LoginHandler;
 use Game\Api\Handler\MeHandler;
 use Game\Api\Handler\RegisterHandler;
+use Game\Api\Handler\StartCombatHandler;
+use Game\Combat\LevelingRules;
 use Game\Config\DatabaseConfig;
 use Game\Database\DatabaseConnection;
 use Game\Database\PdoFactory;
@@ -143,7 +145,8 @@ final class LoginMysqlIntegrationTest extends TestCase
     }
 
     /**
-     * Full happy path: register×3 → login (pool warm-up) → me → find_opponents → start_combat vs opponent B.
+     * End-to-end: register×3 → login → me → find_opponents → start_combat → combat_attack loop →
+     * adversarial claim/attack as opponent B → claim as A → DB + me + second claim.
      */
     public function testMainScenarioRegisterThroughStartCombat(): void
     {
@@ -228,6 +231,30 @@ final class LoginMysqlIntegrationTest extends TestCase
                 $this->assertNull($combat['opponent_first_move']);
             }
 
+            $loginB = $this->loginPlayer($pdo, $idB);
+            $sessionB = SessionService::fromEnvironment()->resolveFromBearer(
+                'Bearer ' . $loginB['session_id'],
+            );
+            $this->assertNotNull($sessionB);
+            try {
+                (new CombatAttackHandler())->handle(
+                    new ApiContext(
+                        new IncomingRequest('POST', '/', [], '{}'),
+                        [
+                            'command' => 'combat_attack',
+                            'combat_id' => $combat['combat_id'],
+                            'skill' => 1,
+                        ],
+                        $sessionB,
+                    ),
+                    $db,
+                );
+                $this->fail('Non-initiator must not attack');
+            } catch (ApiHttpException $e) {
+                $this->assertSame(403, $e->httpStatus, $e->getMessage());
+                $this->assertSame('not_your_combat', $e->errorCode);
+            }
+
             $meBefore = new MeHandler();
             $profileBefore = $meBefore->handle(
                 new ApiContext(
@@ -242,6 +269,7 @@ final class LoginMysqlIntegrationTest extends TestCase
             $lastOwn = null;
             $finished = $combat['combat_finished'];
             $attack = new CombatAttackHandler();
+            $lastHitCoinsWon = $combat['coins_won'];
             for ($i = 0; !$finished && $i < 16; ++$i) {
                 $skill = $this->pickLegalStrikeSkill($lastOwn, $lastOpp);
                 $hit = $attack->handle(
@@ -257,6 +285,15 @@ final class LoginMysqlIntegrationTest extends TestCase
                     $db,
                 );
                 $this->assertSame($skill, $hit['your_move']['skill']);
+                $this->assertArrayHasKey('combat_finished', $hit);
+                $this->assertArrayHasKey('your_score', $hit);
+                $this->assertArrayHasKey('opponent_score', $hit);
+                if ($hit['combat_finished']) {
+                    $this->assertIsInt($hit['coins_won']);
+                    $lastHitCoinsWon = $hit['coins_won'];
+                } else {
+                    $this->assertNull($hit['coins_won']);
+                }
                 $lastOwn = $skill;
                 if (!$hit['combat_finished'] && isset($hit['opponent_move']['skill'])) {
                     $lastOpp = (int) $hit['opponent_move']['skill'];
@@ -265,11 +302,58 @@ final class LoginMysqlIntegrationTest extends TestCase
             }
             $this->assertTrue($finished, 'combat should finish within strike limit');
 
-            $rowStmt = $pdo->prepare('SELECT id, status FROM combats WHERE public_id = ?');
+            $rowStmt = $pdo->prepare(
+                'SELECT id, status, winner_character_id, results_applied_at FROM combats WHERE public_id = ?',
+            );
             $rowStmt->execute([strtolower($combat['combat_id'])]);
             $row = $rowStmt->fetch(PDO::FETCH_ASSOC);
             $this->assertIsArray($row);
             $this->assertSame('finished', $row['status']);
+            $combatInternalId = (int) $row['id'];
+            $this->assertNotNull($row['winner_character_id']);
+            $this->assertNull($row['results_applied_at']);
+
+            $uidA = $this->internalUserId($pdo, $idA);
+            $uidB = $this->internalUserId($pdo, $idB);
+            $charIdA = $db->characters()->findInternalIdByUserId($uidA);
+            $charIdB = $db->characters()->findInternalIdByUserId($uidB);
+            $this->assertNotNull($charIdA);
+            $this->assertNotNull($charIdB);
+            $this->assertContains((int) $row['winner_character_id'], [$charIdA, $charIdB]);
+
+            $movesStmt = $pdo->prepare('SELECT COUNT(*) FROM combat_moves WHERE combat_id = ?');
+            $movesStmt->execute([$combatInternalId]);
+            $moveCount = (int) $movesStmt->fetchColumn();
+            $this->assertGreaterThan(0, $moveCount);
+            $this->assertLessThanOrEqual(6, $moveCount);
+
+            $meBBeforeClaim = (new MeHandler())->handle(
+                new ApiContext(
+                    new IncomingRequest('POST', '/', [], '{}'),
+                    ['command' => 'me'],
+                    $sessionB,
+                ),
+                $db,
+            );
+            $this->assertSame(0, $meBBeforeClaim['fights']);
+
+            try {
+                (new ClaimHandler())->handle(
+                    new ApiContext(
+                        new IncomingRequest('POST', '/', [], '{}'),
+                        [
+                            'command' => 'claim',
+                            'combat_id' => $combat['combat_id'],
+                        ],
+                        $sessionB,
+                    ),
+                    $db,
+                );
+                $this->fail('Opponent must not claim initiator combat');
+            } catch (ApiHttpException $e) {
+                $this->assertSame(403, $e->httpStatus, $e->getMessage());
+                $this->assertSame('not_your_combat', $e->errorCode);
+            }
 
             $claim = new ClaimHandler();
             $prize = $claim->handle(
@@ -290,6 +374,72 @@ final class LoginMysqlIntegrationTest extends TestCase
             $expectedCoins = $profileBefore['coins'] + $prize['coins_received'];
             $this->assertSame($expectedCoins, $prize['character']['coins']);
             $this->assertSame($prize['won'], $prize['coins_received'] > 0);
+            $this->assertSame($lastHitCoinsWon, $prize['coins_received']);
+            $this->assertSame(
+                $profileBefore['fights_won'] + $prize['changes']['fights_won'],
+                $prize['character']['fights_won'],
+            );
+            $this->assertSame(
+                LevelingRules::levelFromFightsWon($prize['character']['fights_won']),
+                $prize['character']['level'],
+            );
+            $this->assertSame(
+                $prize['character']['level'] - $profileBefore['level'],
+                $prize['changes']['level'],
+            );
+
+            $rowStmt2 = $pdo->prepare(
+                'SELECT results_applied_at FROM combats WHERE public_id = ?',
+            );
+            $rowStmt2->execute([strtolower($combat['combat_id'])]);
+            $applied = $rowStmt2->fetchColumn();
+            $this->assertNotFalse($applied);
+            $this->assertNotNull($applied);
+
+            $meAfter = (new MeHandler())->handle(
+                new ApiContext(
+                    new IncomingRequest('POST', '/', [], '{}'),
+                    ['command' => 'me'],
+                    $session,
+                ),
+                $db,
+            );
+            foreach (['player_id', 'name', 'level', 'fights', 'fights_won', 'coins', 'skill_1', 'skill_2', 'skill_3'] as $k) {
+                $this->assertSame(
+                    $prize['character'][$k],
+                    $meAfter[$k],
+                    'me() after claim must match claim character snapshot for ' . $k,
+                );
+            }
+
+            $meBAfter = (new MeHandler())->handle(
+                new ApiContext(
+                    new IncomingRequest('POST', '/', [], '{}'),
+                    ['command' => 'me'],
+                    $sessionB,
+                ),
+                $db,
+            );
+            $this->assertSame($meBBeforeClaim['fights'], $meBAfter['fights']);
+            $this->assertSame($meBBeforeClaim['fights_won'], $meBAfter['fights_won']);
+
+            try {
+                $claim->handle(
+                    new ApiContext(
+                        new IncomingRequest('POST', '/', [], '{}'),
+                        [
+                            'command' => 'claim',
+                            'combat_id' => $combat['combat_id'],
+                        ],
+                        $session,
+                    ),
+                    $db,
+                );
+                $this->fail('Second claim must be rejected');
+            } catch (ApiHttpException $e) {
+                $this->assertSame(409, $e->httpStatus, $e->getMessage());
+                $this->assertSame('prize_already_claimed', $e->errorCode);
+            }
         } finally {
             $this->deleteTestUser($pdo, $idA);
             $this->deleteTestUser($pdo, $idB);
