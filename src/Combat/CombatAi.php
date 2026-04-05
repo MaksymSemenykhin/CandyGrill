@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Game\Combat;
 
+use Random\RandomException;
+
 final class CombatAi
 {
     /**
      * Random legal skill; TZ forbids repeating own last or copying opponent’s last move.
+     * @throws RandomException
      */
     public static function chooseSkill(?int $lastOwnSkill, ?int $lastOpponentSkill): int
     {
