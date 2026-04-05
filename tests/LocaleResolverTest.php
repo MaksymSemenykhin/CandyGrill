@@ -54,12 +54,24 @@ final class LocaleResolverTest extends TestCase
         $this->assertSame('ru', LocaleResolver::resolve(null, $r));
     }
 
-    public function testAcceptLanguagePrefersRuToken(): void
+    public function testAcceptLanguageUsesFirstSupportedLanguage(): void
     {
         $r = new IncomingRequest(
             'GET',
             '/',
             ['accept-language' => 'en-US, ru;q=0.8'],
+            '',
+            [],
+        );
+        $this->assertSame('en', LocaleResolver::resolve(null, $r));
+    }
+
+    public function testAcceptLanguageRussianWhenListedFirst(): void
+    {
+        $r = new IncomingRequest(
+            'GET',
+            '/',
+            ['accept-language' => 'ru-RU, en;q=0.8'],
             '',
             [],
         );

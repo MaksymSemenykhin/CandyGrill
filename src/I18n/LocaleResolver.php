@@ -30,9 +30,9 @@ final class LocaleResolver
             return $n;
         }
 
-        $al = $request->header('accept-language');
-        if ($al !== null && $al !== '' && \preg_match('/\bru\b/i', $al) === 1) {
-            return 'ru';
+        $fromAl = self::localeFromAcceptLanguageHeader($request->header('accept-language'));
+        if ($fromAl !== null) {
+            return $fromAl;
         }
 
         $fallback = $_ENV['APP_LANG'] ?? \getenv('APP_LANG');
@@ -75,6 +75,28 @@ final class LocaleResolver
 
         if ($s === 'en' || \str_starts_with($s, 'en-')) {
             return 'en';
+        }
+
+        return null;
+    }
+
+    /**
+     * First supported language in the header wins (RFC 9110-style comma list; ignores q-values).
+     */
+    private static function localeFromAcceptLanguageHeader(?string $al): ?string
+    {
+        if ($al === null || $al === '') {
+            return null;
+        }
+        foreach (\preg_split('/\s*,\s*/', $al) ?: [] as $part) {
+            $part = \trim((string) (\explode(';', $part, 2)[0] ?? ''));
+            if ($part === '') {
+                continue;
+            }
+            $n = self::normalizeLocale($part);
+            if ($n !== null) {
+                return $n;
+            }
         }
 
         return null;
