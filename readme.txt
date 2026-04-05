@@ -23,7 +23,7 @@ PHP + MySQL + optional Memcached; wrappers **`sail`** / **`sail.bat`** (not Lara
 1. `cp .env.example .env`
 2. `./sail build && ./sail up -d` (or `sail.bat` on Windows CMD)
 3. `./sail composer install` · `./sail composer migrate`
-4. App: `http://127.0.0.1:8080/` (port from `APP_PORT` in `.env`)
+4. App: `http://127.0.0.1:8080/` (port from `APP_PORT` in `.env` — это Nginx с коротким кэшем для анонимных GET; дальше прокси на `php -S`)
 
 WSL on Windows drives: see Compose notes in repo; prefer Docker Desktop WSL2 integration.
 

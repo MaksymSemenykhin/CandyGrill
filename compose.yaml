@@ -1,17 +1,30 @@
 # Sail-like stack without Laravel: PHP + MySQL 8 + Memcached.
 # Usage: cp .env.example .env && ./sail up -d  (or sail.bat on Windows CMD)
+# HTTP: Nginx (proxy + short cache for anonymous GET) → app (php -S). Host port APP_PORT → Nginx:80.
 
 name: candygrill
 
 services:
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "${APP_PORT:-8080}:80"
+    volumes:
+      - ./docker/nginx/docker-compose-proxy.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx-cache:/var/cache/nginx
+    depends_on:
+      app:
+        condition: service_started
+    restart: unless-stopped
+
   app:
     build:
       context: ./docker/8.3
       dockerfile: Dockerfile
     env_file:
       - .env
-    ports:
-      - "${APP_PORT:-8080}:8080"
+    expose:
+      - "8080"
     volumes:
       - .:/var/www/html
     depends_on:
@@ -45,3 +58,4 @@ services:
 
 volumes:
   candygrill-mysql:
+  nginx-cache:
