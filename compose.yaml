@@ -56,6 +56,21 @@ services:
     ports:
       - "${FORWARD_MEMCACHED_PORT:-11211}:11211"
 
+  # Демо / сдача задания: просмотр MySQL в браузере. Не оставляйте открытым на публичном прод-сервере.
+  phpmyadmin:
+    image: phpmyadmin:latest
+    ports:
+      - "${PHPMYADMIN_PORT:-8081}:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+      PMA_USER: "${DB_USERNAME:-root}"
+      PMA_PASSWORD: "${DB_PASSWORD:-password}"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   candygrill-mysql:
   nginx-cache:
