@@ -148,7 +148,6 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.8', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertIsString($data['message']);
         $this->assertStringContainsStringIgnoringCase('POST', $data['message']);
@@ -164,7 +163,6 @@ final class PublicIndexHttpRequestTest extends TestCase
         $this->assertJson($raw);
         $data = json_decode($raw, true, 512, JSON_THROW_ON_ERROR);
         $this->assertTrue($data['ok']);
-        $this->assertSame('1.8', $data['stage']);
         $this->assertArrayHasKey('message', $data);
         $this->assertStringContainsStringIgnoringCase('command', (string) $data['message']);
         $this->assertApiEnvelope($data);

@@ -1,141 +1,77 @@
-# Traceability vs official specification
-
-Full assignment text: **`docs/assignment-original-spec.md`**.
+# Implementation vs `docs/assignment-original-spec.md`
 
 ---
 
-## Registration (spec request #1) — implemented
+## Registration (#1)
 
 | Requirement | Implementation |
 |-------------|----------------|
-| Client sends **character name** | JSON `name` (string, non-empty after trim, ≤ 64 UTF-8 code points). |
-| Server creates **character** with skills **0–50** at random | Table `characters`: `skill_1`, `skill_2`, `skill_3`; `level=1`, `fights`/`fights_won`/`coins`=0. |
-| Response — **player identifier** | Field **`player_id`** — **UUID v4** string (`users.public_id`); numeric `users.id` only internally / FK. |
-| Persist character fields from spec | Columns: `name`, `level`, `fights`, `fights_won`, `coins`, `skill_1..3` (+ `version`, `updated_at` for future combat). |
+| Name → character | JSON `name` (trim, ≤ 64 code points). |
+| Skills 0–50 random | `characters.skill_1..3`; `level=1`, fights/coins zeroed. |
+| Player id | `player_id` UUID v4 (`users.public_id`). |
 
-Files: migrations `20260401120001_tz_registration_schema.php`, `20260404180000_add_users_public_id.php`, `RegisterHandler`, **`PlayerService::register`**, `UserRepository`, `CharacterRepository::createForPlayer`.
-
-**`session_issue`:** body field **`user_id`** — positive **int** (internal id) or the same **`player_id`** (UUID) if the string exists in `users`.
+`session_issue`: body `user_id` = internal int or existing `player_id` UUID.
 
 ---
 
-## Login (spec request #2) — implemented
+## Login (#2)
 
 | Requirement | Implementation |
 |-------------|----------------|
-| Client sends **player identifier** | Field **`player_id`** — **UUID v4** string (same as **`player_id`** from `register`). |
-| Server logs in and returns **session identifier** | **`session_id`** — session token (64 hex); **`expires_in`** from `SESSION_TTL_SECONDS`. Send as **`Authorization: Bearer …`** or body **`session_id`** (also accepts **`access_token`** for compatibility). |
-| Inactive user | Row in **`users`** with **`status` ≠ `active`** gets no session → **401** `unknown_player`. |
-
-Files: **`LoginHandler`**, **`PlayerService::login`**, **`LoginPlayerIdInput`**, **`ActivePlayerLookup`**, **`UserRepository`**, **`SessionService`**.
+| `player_id` UUID | Returns `session_id` (64 hex), `expires_in`. |
+| Bearer / body | `Authorization: Bearer`, or `session_id` / `X-Session-Token`. |
+| Inactive user | **401** `unknown_player`. |
 
 ---
 
-## Current player profile (`me`) — implemented
+## `me`
 
-| Requirement | Implementation |
-|-------------|----------------|
-| Authenticated client reads character | JSON `command` = **`me`**, session via **`Authorization: Bearer`** (or **`session_id`** / **`X-Session-Token`** like other POSTs). |
-| Response | **`player_id`** (UUID) plus TZ character fields: **`name`**, **`level`**, **`fights`**, **`fights_won`**, **`coins`**, **`skill_1`**, **`skill_2`**, **`skill_3`**. |
-| No session | **401** `unauthorized`. |
-| No character row | **404** `character_not_found`. |
-
-Files: **`MeHandler`**, **`CharacterRepository::findGameProfileByUserId`**.
+Authenticated `command: me` → `player_id`, `name`, `level`, `fights`, `fights_won`, `coins`, `skill_1..3`.
 
 ---
 
-## Choosing an opponent (spec request #3) — implemented
+## `find_opponents` (#3)
 
-| Requirement | Implementation |
-|-------------|----------------|
-| Client requests opponent matchmaking | JSON `command` = **`find_opponents`**, session: **`Authorization: Bearer`** + token from **`login`** (or **`session_id`** in body like other POSTs). |
-| Server picks up to **two** random opponents at the **same level** as the client character | **`MatchPool`** index: on **`login`** (and **`find_opponents`** — TTL refresh) the player is stored with `level`, `player_id`, `name`, `until` ≈ session TTL; pick from pool by level (up to 2), backfill from DB — `CharacterRepository::findRandomOpponentSummaries` (active **`users`**, same `level`, exclude `user_id` and already chosen `player_id`s). Pool storage: JSON + flock (path from `SESSION_MEMORY_SYNC_FILE` → `match-pool.json`, or **`MATCH_POOL_SYNC_FILE`**) or **`MATCH_POOL_DRIVER=memcached`**. Disable: **`MATCH_POOL_ENABLED=false`** — SQL only. |
-| Response — **ids and names** | Each item: **`player_id`** (UUID `users.public_id`), **`name`**. Field **`data.opponents`** — array of **1 or 2** entries. |
-| No suitable players | **404** `no_opponents_available`. |
-| No session | **401** `unauthorized`. |
-| No **`characters`** row for session user | **404** `character_not_found`. |
-
-Files: **`FindOpponentsHandler`**, **`CharacterRepository`** (level lookup and opponents).
+Up to **2** opponents, same **level**, active users: `MatchPool` + `CharacterRepository::findRandomOpponentSummaries` (optional Memcached). **404** `no_opponents_available`.
 
 ---
 
-## Starting combat (spec request #4) — implemented
+## `start_combat` (#4)
 
-| Requirement | Implementation |
-|-------------|----------------|
-| Client sends **id of the opponent** | JSON **`opponent_player_id`** — UUID v4 (`player_id` of the opponent). |
-| Session | **`Authorization: Bearer`** (or body **`session_id`**) like other game commands. |
-| Response — **opponent skill values** | nested **`opponent`**: **`player_id`**, **`skill_1`**, **`skill_2`**, **`skill_3`**. |
-| **First attacker random** | Field **`first_striker**: `you` \| `opponent` (`you` = initiator / session holder). |
-| Opponent acts first | **`opponent_first_move`**: `{ skill: 1\|2\|3, points }` (AI); otherwise `null`. |
-| Combat already over on start (e.g. instant KO) | **`combat_finished`** true and **`coins_won`** — promised initiator reward (TZ: same as request #5); balance still updates only on **`claim`**. |
-| Persist session | **`combat_id`** (UUID) in **`combats`**; optional row in **`combat_moves`** for AI opening; **`state`** JSON for the combat engine. Stats not applied until prize claim (§6). |
-| Same **level** | **400** `opponent_level_mismatch`. |
-| Self-opponent | **400** `cannot_fight_self`. |
-| Unknown / inactive opponent | **404** `opponent_not_found`. |
-
-Files: **`StartCombatHandler`**, **`CombatOpening`**, **`CombatMath`**, **`CombatRepository`**, **`OpponentPlayerIdInput`**, **`CharacterRepository::findInternalIdByUserId`**.
+`opponent_player_id` UUID. Response: opponent skills, `first_striker` (`you`/`opponent`), scores, `opponent_first_move` if they open, `combat_finished`, `coins_won` (null until finished). Persist `combats` + `state`; stats apply on `claim` only.
 
 ---
 
-## Combat attack (spec §5) — implemented
+## `combat_attack` (#5)
 
-| Requirement | Implementation |
-|-------------|----------------|
-| Command | **`combat_attack`**: **`combat_id`** (UUID from `start_combat`), **`skill`** `1`–`3`. |
-| Who may play | Only **`state.initiator_user_id`**. Otherwise **403** `not_your_combat`. |
-| Turn order | **`CombatTurnOrder`** + **`completed_strikes`**; **409** `not_your_turn` if initiator strikes out of order. |
-| Rules | **`CombatStrikeRules`** (no repeat own; no copy opponent’s last). **400** `illegal_skill`. |
-| Response | **`your_move`**, optional **`opponent_move`** (AI when combat continues), scores, **`combat_finished`**, **`coins_won`** when finished (actual balance on **claim**, §6). |
-| Persistence | Transaction + **`findByPublicIdForUpdate`**; **`appendMove`** per strike; finish updates **`status`**, **`winner_character_id`**, **`finished_at`**. |
-
-Files: **`CombatAttackHandler`**, **`CombatAttackService`**, **`CombatAttackInput`**, **`CombatAi`**, **`CombatResolution`**.
+`combat_id`, `skill` 1–3. Initiator only; turn + repeat/copy rules. Response: moves, scores, `combat_finished`, `coins_won` when done (banked on `claim`).
 
 ---
 
-## Claim prize (spec §6) — implemented
+## `claim` (#6)
 
-| Requirement | Implementation |
-|-------------|----------------|
-| Command | **`claim`**: **`combat_id`** (UUID). Session user = combat **initiator** (`state.initiator_user_id`). |
-| When | Combat **`status`** = `finished`, **`results_applied_at`** still `null`. **409** `combat_not_finished` / **`prize_already_claimed`**. |
-| Effect | Initiator **`characters`**: `fights += 1`, `fights_won += 1` if won, `coins +=` {@see CombatResolution::WINNER_COINS} if won else `0`, **`level`** recalculated from `fights_won` ({@see LevelingRules}). Then **`markResultsApplied`**. |
-| Response | **`won`**, **`coins_received`**, **`changes`** (deltas; **`changes.level`** is this claim’s level step, usually 0 or 1), **`character`** snapshot (same fields as **`me`**). |
-
-Files: **`ClaimHandler`**, **`CombatClaimService`**, **`ClaimCombatInput`**, **`CharacterRepository::applyInitiatorCombatClaim`**, **`LevelingRules`**.
+Initiator, combat `finished`, `results_applied_at` null. Updates `fights` / `fights_won` / `coins` (winner **+10** coins) / `level`, then `markResultsApplied`.
 
 ---
 
-## Levelling (TZ *Levelling up*)
+## Levelling
 
-| Rule | Implementation |
-|------|----------------|
-| Level from wins | `level = max(1, 1 + floor(fights_won / N))` with **`N = {@see LevelingRules::WINS_PER_LEVEL}`** (3). |
-| When applied | Same `UPDATE` as claim prize (`applyInitiatorCombatClaim`), so level tracks wins after each **`claim`**. |
+`level = max(1, 1 + floor(fights_won / 3))` (`LevelingRules::WINS_PER_LEVEL`), applied in the same `UPDATE` as claim.
 
 ---
 
-## Remaining spec (future)
+## Not implemented
 
-Skill upgrades for coins (*in the future* in `docs/assignment-original-spec.md`) — not implemented.
-
----
-
-## Response localization
-
-Errors, **bootstrap** (**`GET /`**), and other API responses use **Symfony Translation** (`symfony/translation`), files **`translations/api.en.yaml`** and **`translations/api.ru.yaml`**, domain **`api`**.
-
-**Language priority:** body field **`lang`** (`en` / `ru` and variants like `ru-RU`) → query **`lang`** (including **`GET /?lang=ru`** and **`POST /?lang=ru`**) → **`Accept-Language`** (word `ru`) → **`APP_LANG`** in `.env`.
-
-Every JSON response includes **`lang`**: the applied locale code (`en` | `ru`).
+Skill upgrades for coins (TZ “in the future”).
 
 ---
 
-## General objectives
+## i18n
 
-| Requirement | Status |
-|-------------|--------|
-| No PHP frameworks | Yes. |
-| Concurrent requests | Depends on deployment (FPM, etc.). |
-| Scale, Memcached | Partially (sessions, Compose). |
-| API extensibility | Yes (`command` + handlers). |
+`translations/api.*.yaml`, domain `api`. Order: body `lang` → query `lang` → `Accept-Language` → `APP_LANG`. Every response includes `lang`.
+
+---
+
+## Project constraints
+
+No full PHP framework; PDO; command handlers; optional Memcached for sessions / pool.

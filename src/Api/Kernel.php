@@ -11,16 +11,13 @@ use Game\Database\DatabaseConnection;
 use Game\Database\PdoFactory;
 use Game\Api\Validation\ApiValidation;
 use Game\Api\Validation\CommandBody;
-use Game\Bootstrap;
 use Game\Http\ApiContext;
 use Game\Http\IncomingRequest;
 use Game\I18n\ApiTranslator;
 use Game\I18n\LocaleResolver;
 use Game\Session\SessionService;
 
-/**
- * POST `command`: JSON or `x-www-form-urlencoded` — `Api/Handler/{Studly}Handler.php` + {@see CommandHandler}.
- */
+/** Resolves POST `command` to `Api/Handler/{Studly}Handler.php`. */
 final class Kernel
 {
     public static function boot(string $projectRoot): self
@@ -46,7 +43,6 @@ final class Kernel
         if ($req->method === 'GET' && ($req->path === '/' || $req->path === '/index.php')) {
             $this->sendJson(200, [
                 'ok' => true,
-                'stage' => Bootstrap::PHASE,
                 'message' => $this->i18n->trans('api.bootstrap.message', [], $preBodyLang),
             ]);
 

@@ -1,5 +1,5 @@
 # Russian API and validation messages (Accept-Language: ru or APP_LANG=ru)
-api.bootstrap.message: 'Фаза 2.1: POST JSON `command` — `register`, `login`, `me` (Bearer), `find_opponents`, `start_combat`, `combat_attack`, `claim`, `ping`, `health`, session_*. Уровень растёт каждые 3 победы при `claim`.'
+api.bootstrap.message: 'POST: JSON или form, поле `command`. Игра: `register`, `login`, `me`, `find_opponents`, `start_combat`, `combat_attack`, `claim`. Ещё `ping`, `health`, сессии.'
 api.error.method_not_allowed: 'Используйте POST с телом application/json или application/x-www-form-urlencoded.'
 api.error.invalid_json: 'Тело запроса должно быть корректным JSON или полями form-urlencoded.'
 api.error.missing_command: 'Поле `command` обязательно.'

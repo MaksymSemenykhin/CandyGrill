@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Game\Tests;
 
-use Game\Bootstrap;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Composer autoload, phase marker, Docker Compose, Phinx, and migration layout.
+ * Composer autoload, Docker Compose, Phinx, and migration layout.
  */
 final class ProjectLayoutTest extends TestCase
 {
@@ -23,12 +22,6 @@ final class ProjectLayoutTest extends TestCase
     public function testVendorAutoloadExists(): void
     {
         $this->assertFileExists($this->root . '/vendor/autoload.php', 'Run composer install before phpunit.');
-    }
-
-    public function testBootstrapPhaseMatchesPublicPlaceholder(): void
-    {
-        $this->assertTrue(class_exists(Bootstrap::class, true));
-        $this->assertSame('2.1', Bootstrap::PHASE);
     }
 
     public function testDockerComposeFileExists(): void
