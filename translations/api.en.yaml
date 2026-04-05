@@ -1,5 +1,5 @@
 # API response and validation messages — English (default / fallback)
-api.bootstrap.message: 'Phase 1.9: POST JSON `command` — `register`, `login`, `me` (Bearer), `find_opponents`, `start_combat`, `combat_attack`, `ping`, `health`, session_*. Next: claim prize.'
+api.bootstrap.message: 'Phase 2.0: POST JSON `command` — `register`, `login`, `me` (Bearer), `find_opponents`, `start_combat`, `combat_attack`, `claim`, `ping`, `health`, session_*. Next: levelling.'
 api.error.method_not_allowed: 'Use POST with application/json or application/x-www-form-urlencoded.'
 api.error.invalid_json: 'Body must be valid JSON or form-urlencoded fields.'
 api.error.missing_command: 'Field `command` is required.'
@@ -21,6 +21,9 @@ api.error.combat_state_invalid: 'Combat data is corrupted.'
 api.error.not_your_combat: 'You are not the initiator of this combat.'
 api.error.not_your_turn: 'It is not your turn to strike.'
 api.error.illegal_skill: 'That skill cannot be used (repeat or copy rules).'
+api.error.combat_not_finished: 'Combat is still in progress; finish the fight before claiming.'
+api.error.prize_already_claimed: 'Combat results were already applied for this battle.'
+api.error.combat_participants_invalid: 'Combat record does not match the initiator.'
 
 api.command.required: 'Field `command` is required.'
 api.command.invalid: 'Unknown command.'

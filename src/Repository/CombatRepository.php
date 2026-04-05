@@ -177,14 +177,18 @@ class CombatRepository
     }
 
     /**
+     * @return int Rows affected (expect 1 on first successful claim).
+     *
      * @throws PDOException
      */
-    public function markResultsApplied(int $combatId): void
+    public function markResultsApplied(int $combatId): int
     {
         $stmt = $this->pdo->prepare(
             'UPDATE combats SET results_applied_at = CURRENT_TIMESTAMP(3) WHERE id = ? AND results_applied_at IS NULL',
         );
         $stmt->execute([$combatId]);
+
+        return $stmt->rowCount();
     }
 
     /**

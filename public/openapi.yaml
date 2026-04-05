@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
   title: CandyGrill
-  version: 1.9.0
+  version: 2.0.0
   description: |
     **Session:** after `login`, click **Authorize** and paste the 64 hex chars from `data.session_id` (Swagger adds `Authorization: Bearer …`).
 
-    For `register` / `login`, call the API without Authorize (or click Logout). Use `combat_attack` after `start_combat` (initiator only).
+    For `register` / `login`, call the API without Authorize (or click Logout). Flow: `start_combat` → `combat_attack` (until finished) → `claim` (initiator).
 
 servers:
   - url: http://127.0.0.1:8080
@@ -24,7 +24,7 @@ paths:
       summary: POST /
       operationId: postCommand
       description: >-
-        For session commands (`me`, `find_opponents`, `start_combat`, `combat_attack`, …) click **Authorize** and paste `session_id` from `login` (64 hex, no `Bearer` prefix).
+        For session commands (`me`, `find_opponents`, `start_combat`, `combat_attack`, `claim`, …) click **Authorize** and paste `session_id` from `login` (64 hex, no `Bearer` prefix).
       parameters:
         - $ref: '#/components/parameters/LangQuery'
       requestBody:
@@ -39,6 +39,7 @@ paths:
                 - $ref: '#/components/schemas/FindOpponentsRequest'
                 - $ref: '#/components/schemas/StartCombatRequest'
                 - $ref: '#/components/schemas/CombatAttackRequest'
+                - $ref: '#/components/schemas/ClaimRequest'
               discriminator:
                 propertyName: command
                 mapping:
@@ -48,6 +49,7 @@ paths:
                   find_opponents: '#/components/schemas/FindOpponentsRequest'
                   start_combat: '#/components/schemas/StartCombatRequest'
                   combat_attack: '#/components/schemas/CombatAttackRequest'
+                  claim: '#/components/schemas/ClaimRequest'
             examples:
               register:
                 summary: 'Template: register'
@@ -78,6 +80,11 @@ paths:
                   command: combat_attack
                   combat_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
                   skill: 1
+              claim:
+                summary: 'Template: claim (needs Bearer)'
+                value:
+                  command: claim
+                  combat_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
 
           application/x-www-form-urlencoded:
             schema:
@@ -88,6 +95,7 @@ paths:
                 - $ref: '#/components/schemas/FindOpponentsRequest'
                 - $ref: '#/components/schemas/StartCombatRequest'
                 - $ref: '#/components/schemas/CombatAttackRequest'
+                - $ref: '#/components/schemas/ClaimRequest'
               discriminator:
                 propertyName: command
                 mapping:
@@ -97,6 +105,7 @@ paths:
                   find_opponents: '#/components/schemas/FindOpponentsRequest'
                   start_combat: '#/components/schemas/StartCombatRequest'
                   combat_attack: '#/components/schemas/CombatAttackRequest'
+                  claim: '#/components/schemas/ClaimRequest'
             examples:
               register:
                 summary: 'Template: register (form)'
@@ -127,6 +136,11 @@ paths:
                   command: combat_attack
                   combat_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
                   skill: 1
+              claim:
+                summary: 'Template: claim (form)'
+                value:
+                  command: claim
+                  combat_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
 
       responses:
         '200':
@@ -141,6 +155,7 @@ paths:
                   - $ref: '#/components/schemas/FindOpponentsOk'
                   - $ref: '#/components/schemas/StartCombatOk'
                   - $ref: '#/components/schemas/CombatAttackOk'
+                  - $ref: '#/components/schemas/ClaimOk'
 
         '400':
           description: Bad request
@@ -300,6 +315,25 @@ components:
           type: integer
           enum: [1, 2, 3]
           description: Skill index; must respect repeat/copy rules.
+        lang:
+          type: string
+          enum: [en, ru]
+        session_id:
+          type: string
+          description: Optional; otherwise use Authorization Bearer header.
+
+    ClaimRequest:
+      type: object
+      required: [command, combat_id]
+      additionalProperties: false
+      properties:
+        command:
+          type: string
+          enum: [claim]
+        combat_id:
+          type: string
+          format: uuid
+          description: Finished combat from `start_combat` / `combat_attack`.
         lang:
           type: string
           enum: [en, ru]
@@ -558,7 +592,86 @@ components:
               nullable: true
               type: integer
               minimum: 0
-              description: Shown when `combat_finished`; actual coins applied on `claim` (future).
+              description: Shown when `combat_finished`; coins move to balance on `claim`.
+
+    ClaimOk:
+      type: object
+      required: [ok, data, lang]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        lang:
+          type: string
+          enum: [en, ru]
+        data:
+          type: object
+          required: [combat_id, won, coins_received, changes, character]
+          additionalProperties: false
+          properties:
+            combat_id:
+              type: string
+              format: uuid
+            won:
+              type: boolean
+            coins_received:
+              type: integer
+              minimum: 0
+            changes:
+              type: object
+              required: [fights, fights_won, coins, level]
+              additionalProperties: false
+              properties:
+                fights:
+                  type: integer
+                  minimum: 0
+                fights_won:
+                  type: integer
+                  minimum: 0
+                coins:
+                  type: integer
+                  minimum: 0
+                level:
+                  type: integer
+                  minimum: 0
+                  description: Level delta (0 until levelling is implemented).
+            character:
+              type: object
+              required:
+                - player_id
+                - name
+                - level
+                - fights
+                - fights_won
+                - coins
+                - skill_1
+                - skill_2
+                - skill_3
+              additionalProperties: false
+              properties:
+                player_id:
+                  type: string
+                  format: uuid
+                name:
+                  type: string
+                level:
+                  type: integer
+                  minimum: 1
+                fights:
+                  type: integer
+                  minimum: 0
+                fights_won:
+                  type: integer
+                  minimum: 0
+                coins:
+                  type: integer
+                  minimum: 0
+                skill_1:
+                  type: integer
+                skill_2:
+                  type: integer
+                skill_3:
+                  type: integer
 
     ErrorBody:
       type: object

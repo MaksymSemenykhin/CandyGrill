@@ -92,9 +92,22 @@ Files: **`CombatAttackHandler`**, **`CombatAttackService`**, **`CombatAttackInpu
 
 ---
 
-## Remaining spec (§6–7, prize claim, levelling)
+## Claim prize (spec §6) — implemented
 
-Prize **claim**, levelling — not implemented. See `docs/assignment-original-spec.md`.
+| Requirement | Implementation |
+|-------------|----------------|
+| Command | **`claim`**: **`combat_id`** (UUID). Session user = combat **initiator** (`state.initiator_user_id`). |
+| When | Combat **`status`** = `finished`, **`results_applied_at`** still `null`. **409** `combat_not_finished` / **`prize_already_claimed`**. |
+| Effect | Initiator **`characters`**: `fights += 1`, `fights_won += 1` if won, `coins +=` {@see CombatResolution::WINNER_COINS} if won else `0`. Then **`markResultsApplied`**. |
+| Response | **`won`**, **`coins_received`**, **`changes`** (deltas incl. `level: 0` until levelling exists), **`character`** snapshot (same fields as **`me`**). |
+
+Files: **`ClaimHandler`**, **`CombatClaimService`**, **`ClaimCombatInput`**, **`CharacterRepository::applyInitiatorCombatClaim`**.
+
+---
+
+## Remaining spec (§7, levelling)
+
+Levelling / skill upgrades — not implemented. See `docs/assignment-original-spec.md`.
 
 ---
 

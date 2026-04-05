@@ -6,6 +6,7 @@ namespace Game\Tests;
 
 use Dotenv\Dotenv;
 use Game\Api\Handler\FindOpponentsHandler;
+use Game\Api\Handler\ClaimHandler;
 use Game\Api\Handler\CombatAttackHandler;
 use Game\Api\Handler\StartCombatHandler;
 use Game\Api\Handler\LoginHandler;
@@ -225,43 +226,88 @@ final class LoginMysqlIntegrationTest extends TestCase
                 $this->assertNull($combat['opponent_first_move']);
             }
 
-            $firstSkill = 1;
-            if (isset($combat['opponent_first_move']['skill'])) {
-                $blocked = (int) $combat['opponent_first_move']['skill'];
-                $firstSkill = $blocked === 1 ? 2 : 1;
-            }
-
-            $attack = new CombatAttackHandler();
-            $hit = $attack->handle(
+            $meBefore = new MeHandler();
+            $profileBefore = $meBefore->handle(
                 new ApiContext(
                     new IncomingRequest('POST', '/', [], '{}'),
-                    [
-                        'command' => 'combat_attack',
-                        'combat_id' => $combat['combat_id'],
-                        'skill' => $firstSkill,
-                    ],
+                    ['command' => 'me'],
                     $session,
                 ),
                 $db,
             );
-            $this->assertSame($firstSkill, $hit['your_move']['skill']);
-            $this->assertArrayHasKey('points', $hit['your_move']);
-            $this->assertIsInt($hit['your_move']['points']);
-            if (!$hit['combat_finished']) {
-                $this->assertIsArray($hit['opponent_move']);
-                $this->assertContains($hit['opponent_move']['skill'], [1, 2, 3]);
+
+            $lastOpp = isset($combat['opponent_first_move']['skill']) ? (int) $combat['opponent_first_move']['skill'] : null;
+            $lastOwn = null;
+            $finished = $combat['combat_finished'];
+            $attack = new CombatAttackHandler();
+            for ($i = 0; !$finished && $i < 16; ++$i) {
+                $skill = $this->pickLegalStrikeSkill($lastOwn, $lastOpp);
+                $hit = $attack->handle(
+                    new ApiContext(
+                        new IncomingRequest('POST', '/', [], '{}'),
+                        [
+                            'command' => 'combat_attack',
+                            'combat_id' => $combat['combat_id'],
+                            'skill' => $skill,
+                        ],
+                        $session,
+                    ),
+                    $db,
+                );
+                $this->assertSame($skill, $hit['your_move']['skill']);
+                $lastOwn = $skill;
+                if (!$hit['combat_finished'] && isset($hit['opponent_move']['skill'])) {
+                    $lastOpp = (int) $hit['opponent_move']['skill'];
+                }
+                $finished = $hit['combat_finished'];
             }
+            $this->assertTrue($finished, 'combat should finish within strike limit');
 
             $rowStmt = $pdo->prepare('SELECT id, status FROM combats WHERE public_id = ?');
             $rowStmt->execute([strtolower($combat['combat_id'])]);
             $row = $rowStmt->fetch(PDO::FETCH_ASSOC);
             $this->assertIsArray($row);
-            $this->assertSame('active', $row['status']);
+            $this->assertSame('finished', $row['status']);
+
+            $claim = new ClaimHandler();
+            $prize = $claim->handle(
+                new ApiContext(
+                    new IncomingRequest('POST', '/', [], '{}'),
+                    [
+                        'command' => 'claim',
+                        'combat_id' => $combat['combat_id'],
+                    ],
+                    $session,
+                ),
+                $db,
+            );
+            $this->assertSame(strtolower($combat['combat_id']), $prize['combat_id']);
+            $this->assertSame($prize['won'] ? 1 : 0, $prize['changes']['fights_won']);
+            $this->assertSame(1, $prize['changes']['fights']);
+            $this->assertSame($profileBefore['fights'] + 1, $prize['character']['fights']);
+            $expectedCoins = $profileBefore['coins'] + $prize['coins_received'];
+            $this->assertSame($expectedCoins, $prize['character']['coins']);
+            $this->assertSame($prize['won'], $prize['coins_received'] > 0);
         } finally {
             $this->deleteTestUser($pdo, $idA);
             $this->deleteTestUser($pdo, $idB);
             $this->deleteTestUser($pdo, $idC);
         }
+    }
+
+    private function pickLegalStrikeSkill(?int $lastOwn, ?int $lastOpp): int
+    {
+        for ($s = 1; $s <= 3; ++$s) {
+            if ($lastOwn !== null && $s === $lastOwn) {
+                continue;
+            }
+            if ($lastOpp !== null && $s === $lastOpp) {
+                continue;
+            }
+
+            return $s;
+        }
+        $this->fail('No legal skill (test rule mismatch)');
     }
 
     private function pdoAfterMigrations(): PDO

@@ -203,4 +203,34 @@ class CharacterRepository
 
         return $out;
     }
+
+    /**
+     * TZ §6: one fight recorded for initiator; optional win increment and coin reward.
+     *
+     * @throws PDOException
+     */
+    public function applyInitiatorCombatClaim(int $userId, int $fightsWonIncrement, int $coinsDelta): void
+    {
+        if ($userId < 1) {
+            throw new \InvalidArgumentException('userId must be positive.');
+        }
+        if ($fightsWonIncrement !== 0 && $fightsWonIncrement !== 1) {
+            throw new \InvalidArgumentException('fightsWonIncrement must be 0 or 1.');
+        }
+        if ($coinsDelta < 0) {
+            throw new \InvalidArgumentException('coinsDelta must be non-negative.');
+        }
+        $stmt = $this->pdo->prepare(
+            'UPDATE characters
+             SET fights = fights + 1,
+                 fights_won = fights_won + :winc,
+                 coins = coins + :coins
+             WHERE user_id = :uid',
+        );
+        $stmt->execute([
+            'winc' => $fightsWonIncrement,
+            'coins' => $coinsDelta,
+            'uid' => $userId,
+        ]);
+    }
 }

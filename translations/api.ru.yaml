@@ -1,5 +1,5 @@
 # Russian API and validation messages (Accept-Language: ru or APP_LANG=ru)
-api.bootstrap.message: 'Фаза 1.9: POST JSON `command` — `register`, `login`, `me` (Bearer), `find_opponents`, `start_combat`, `combat_attack`, `ping`, `health`, session_*. Далее: получение приза.'
+api.bootstrap.message: 'Фаза 2.0: POST JSON `command` — `register`, `login`, `me` (Bearer), `find_opponents`, `start_combat`, `combat_attack`, `claim`, `ping`, `health`, session_*. Далее: уровни.'
 api.error.method_not_allowed: 'Используйте POST с телом application/json или application/x-www-form-urlencoded.'
 api.error.invalid_json: 'Тело запроса должно быть корректным JSON или полями form-urlencoded.'
 api.error.missing_command: 'Поле `command` обязательно.'
@@ -21,6 +21,9 @@ api.error.combat_state_invalid: 'Данные боя повреждены.'
 api.error.not_your_combat: 'Вы не инициатор этого боя.'
 api.error.not_your_turn: 'Сейчас не ваш ход.'
 api.error.illegal_skill: 'Этот скилл недоступен (нельзя повторить свой или скопировать удар соперника).'
+api.error.combat_not_finished: 'Бой ещё не закончен; завершите поединок перед получением приза.'
+api.error.prize_already_claimed: 'Результаты этого боя уже были применены.'
+api.error.combat_participants_invalid: 'Запись боя не соответствует инициатору.'
 
 api.command.required: 'Поле `command` обязательно.'
 api.command.invalid: 'Неизвестная команда.'
