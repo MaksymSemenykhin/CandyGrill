@@ -19,26 +19,10 @@ final class CombatAttackService implements CombatAttackServiceInterface
         $pdo = $db->pdo();
         $pdo->beginTransaction();
         try {
-            $row = $db->combats()->findByPublicIdForUpdate($combatId);
-            if ($row === null) {
-                throw new ApiHttpException(404, 'combat_not_found', 'api.error.combat_not_found');
-            }
-            if (($row['status'] ?? '') !== 'active') {
-                throw new ApiHttpException(409, 'combat_finished', 'api.error.combat_finished');
-            }
-            if ($row['results_applied_at'] !== null) {
-                throw new ApiHttpException(409, 'combat_finished', 'api.error.combat_finished');
-            }
-
-            $state = $row['state'];
-            if (!\is_array($state)) {
-                throw new ApiHttpException(500, 'combat_state_invalid', 'api.error.combat_state_invalid');
-            }
-            $state = $this->migrateLegacyState($state);
-
-            if ((int) ($state['initiator_user_id'] ?? 0) !== $initiatorUserId) {
-                throw new ApiHttpException(403, 'not_your_combat', 'api.error.not_your_combat');
-            }
+            $row = CombatInitiatorAccess::requireCombatRow($db->combats()->findByPublicIdForUpdate($combatId));
+            CombatInitiatorAccess::assertOpenForAttack($row);
+            $state = CombatInitiatorAccess::stateForCombatEngine($row);
+            CombatInitiatorAccess::assertInitiatorMatchesParticipants($db, $row, $state, $initiatorUserId);
             if (!empty($state['finished'])) {
                 throw new ApiHttpException(409, 'combat_finished', 'api.error.combat_finished');
             }
@@ -226,29 +210,6 @@ final class CombatAttackService implements CombatAttackServiceInterface
             'skill_2' => (int) $row['skill_2'],
             'skill_3' => (int) $row['skill_3'],
         ];
-    }
-
-    /**
-     * @param array<string, mixed> $state
-     *
-     * @return array<string, mixed>
-     */
-    private function migrateLegacyState(array $state): array
-    {
-        if (isset($state['completed_strikes'], $state['next_move_sequence'])) {
-            return $state;
-        }
-        $first = (string) ($state['first'] ?? 'initiator');
-        if ($first === 'opponent') {
-            $state['completed_strikes'] = 1;
-            $state['next_move_sequence'] = 2;
-        } else {
-            $state['completed_strikes'] = 0;
-            $state['next_move_sequence'] = 1;
-        }
-        $state['v'] = max(2, (int) ($state['v'] ?? 1));
-
-        return $state;
     }
 
     /**

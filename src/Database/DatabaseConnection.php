@@ -48,4 +48,28 @@ class DatabaseConnection
     {
         return $this->combats ??= new CombatRepository($this->pdo);
     }
+
+    /**
+     * @template T
+     *
+     * @param callable(self): T $callback
+     *
+     * @return T
+     */
+    public function transaction(callable $callback): mixed
+    {
+        $pdo = $this->pdo;
+        $pdo->beginTransaction();
+        try {
+            $result = $callback($this);
+            $pdo->commit();
+
+            return $result;
+        } catch (\Throwable $e) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $e;
+        }
+    }
 }

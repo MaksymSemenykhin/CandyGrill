@@ -10,6 +10,7 @@ use Game\Database\DatabaseConnection;
 use Game\Http\ApiContext;
 use Game\Service\CombatClaimService;
 use Game\Service\CombatClaimServiceInterface;
+use Game\Service\GameProfileServiceInterface;
 
 /** TZ §6: apply combat outcome to initiator character (fights, win, coins). */
 final class ClaimHandler implements RequiresDatabase
@@ -18,6 +19,7 @@ final class ClaimHandler implements RequiresDatabase
 
     public function __construct(
         private readonly ?CombatClaimServiceInterface $claim = null,
+        private readonly ?GameProfileServiceInterface $profiles = null,
     ) {
     }
 
@@ -26,7 +28,7 @@ final class ClaimHandler implements RequiresDatabase
         $input = new ClaimCombatInput($context->body['combat_id'] ?? null);
         ApiValidation::throwUnlessValid(ApiValidation::validator()->validate($input));
 
-        $svc = $this->claim ?? new CombatClaimService();
+        $svc = $this->claim ?? new CombatClaimService($this->profiles);
 
         return $svc->claim($db, $this->requireUserId($context), $input->normalizedCombatId());
     }
