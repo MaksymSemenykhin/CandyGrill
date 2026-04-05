@@ -55,7 +55,11 @@ final class CombatResolution
         return self::finishWithWinner($state, $winnerSide, $winnerChar);
     }
 
-    /** Coins the initiator will receive on `claim` if they won (0 if lost). */
+    /**
+     * Coins the initiator will receive on `claim` if they won (0 if lost).
+     *
+     * @param array<string, mixed> $state
+     */
     public static function initiatorCoinsWhenFinished(array $state): int
     {
         if (($state[CombatStateKey::WINNER_SIDE] ?? null) === CombatSide::INITIATOR) {
