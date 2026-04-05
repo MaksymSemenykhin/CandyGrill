@@ -88,6 +88,29 @@ class CombatRepository
     }
 
     /**
+     * Same shape as {@see findByPublicId}; must be used inside an open transaction (InnoDB row lock).
+     *
+     * @return array<string, mixed>|null
+     *
+     * @throws PDOException
+     */
+    public function findByPublicIdForUpdate(string $publicId): ?array
+    {
+        $stmt = $this->pdo->prepare(
+            'SELECT id, public_id, participant_a_id, participant_b_id, status, winner_character_id,
+                    state, started_at, finished_at, results_applied_at
+             FROM combats WHERE public_id = ? LIMIT 1 FOR UPDATE',
+        );
+        $stmt->execute([strtolower($publicId)]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!\is_array($row)) {
+            return null;
+        }
+
+        return $this->hydrateRow($row);
+    }
+
+    /**
      * Same shape as {@see findByPublicId}.
      *
      * @return array<string, mixed>|null

@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
   title: CandyGrill
-  version: 1.8.0
+  version: 1.9.0
   description: |
     **Session:** after `login`, click **Authorize** and paste the 64 hex chars from `data.session_id` (Swagger adds `Authorization: Bearer …`).
 
-    For `register` / `login`, call the API without Authorize (or click Logout).
+    For `register` / `login`, call the API without Authorize (or click Logout). Use `combat_attack` after `start_combat` (initiator only).
 
 servers:
   - url: http://127.0.0.1:8080
@@ -24,7 +24,7 @@ paths:
       summary: POST /
       operationId: postCommand
       description: >-
-        For session commands (`me`, `find_opponents`, `start_combat`, …) click **Authorize** and paste `session_id` from `login` (64 hex, no `Bearer` prefix).
+        For session commands (`me`, `find_opponents`, `start_combat`, `combat_attack`, …) click **Authorize** and paste `session_id` from `login` (64 hex, no `Bearer` prefix).
       parameters:
         - $ref: '#/components/parameters/LangQuery'
       requestBody:
@@ -38,6 +38,7 @@ paths:
                 - $ref: '#/components/schemas/MeRequest'
                 - $ref: '#/components/schemas/FindOpponentsRequest'
                 - $ref: '#/components/schemas/StartCombatRequest'
+                - $ref: '#/components/schemas/CombatAttackRequest'
               discriminator:
                 propertyName: command
                 mapping:
@@ -46,6 +47,7 @@ paths:
                   me: '#/components/schemas/MeRequest'
                   find_opponents: '#/components/schemas/FindOpponentsRequest'
                   start_combat: '#/components/schemas/StartCombatRequest'
+                  combat_attack: '#/components/schemas/CombatAttackRequest'
             examples:
               register:
                 summary: 'Template: register'
@@ -70,6 +72,12 @@ paths:
                 value:
                   command: start_combat
                   opponent_player_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+              combat_attack:
+                summary: 'Template: combat_attack (needs Bearer)'
+                value:
+                  command: combat_attack
+                  combat_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+                  skill: 1
 
           application/x-www-form-urlencoded:
             schema:
@@ -79,6 +87,7 @@ paths:
                 - $ref: '#/components/schemas/MeRequest'
                 - $ref: '#/components/schemas/FindOpponentsRequest'
                 - $ref: '#/components/schemas/StartCombatRequest'
+                - $ref: '#/components/schemas/CombatAttackRequest'
               discriminator:
                 propertyName: command
                 mapping:
@@ -87,6 +96,7 @@ paths:
                   me: '#/components/schemas/MeRequest'
                   find_opponents: '#/components/schemas/FindOpponentsRequest'
                   start_combat: '#/components/schemas/StartCombatRequest'
+                  combat_attack: '#/components/schemas/CombatAttackRequest'
             examples:
               register:
                 summary: 'Template: register (form)'
@@ -111,6 +121,12 @@ paths:
                 value:
                   command: start_combat
                   opponent_player_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+              combat_attack:
+                summary: 'Template: combat_attack (form)'
+                value:
+                  command: combat_attack
+                  combat_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+                  skill: 1
 
       responses:
         '200':
@@ -124,6 +140,7 @@ paths:
                   - $ref: '#/components/schemas/MeOk'
                   - $ref: '#/components/schemas/FindOpponentsOk'
                   - $ref: '#/components/schemas/StartCombatOk'
+                  - $ref: '#/components/schemas/CombatAttackOk'
 
         '400':
           description: Bad request
@@ -141,6 +158,13 @@ paths:
 
         '404':
           description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+
+        '409':
+          description: Conflict (e.g. combat already finished or wrong turn)
           content:
             application/json:
               schema:
@@ -253,6 +277,29 @@ components:
           type: string
           format: uuid
           description: Public id of the opponent (from find_opponents or register).
+        lang:
+          type: string
+          enum: [en, ru]
+        session_id:
+          type: string
+          description: Optional; otherwise use Authorization Bearer header.
+
+    CombatAttackRequest:
+      type: object
+      required: [command, combat_id, skill]
+      additionalProperties: false
+      properties:
+        command:
+          type: string
+          enum: [combat_attack]
+        combat_id:
+          type: string
+          format: uuid
+          description: From `start_combat` response.
+        skill:
+          type: integer
+          enum: [1, 2, 3]
+          description: Skill index; must respect repeat/copy rules.
         lang:
           type: string
           enum: [en, ru]
@@ -454,6 +501,64 @@ components:
                 points:
                   type: integer
                   minimum: 0
+
+    CombatAttackOk:
+      type: object
+      required: [ok, data, lang]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        lang:
+          type: string
+          enum: [en, ru]
+        data:
+          type: object
+          required:
+            - your_move
+            - opponent_move
+            - your_score
+            - opponent_score
+            - combat_finished
+            - coins_won
+          additionalProperties: false
+          properties:
+            your_move:
+              type: object
+              required: [skill, points]
+              additionalProperties: false
+              properties:
+                skill:
+                  type: integer
+                  enum: [1, 2, 3]
+                points:
+                  type: integer
+                  minimum: 0
+            opponent_move:
+              nullable: true
+              type: object
+              required: [skill, points]
+              additionalProperties: false
+              properties:
+                skill:
+                  type: integer
+                  enum: [1, 2, 3]
+                points:
+                  type: integer
+                  minimum: 0
+            your_score:
+              type: integer
+              minimum: 0
+            opponent_score:
+              type: integer
+              minimum: 0
+            combat_finished:
+              type: boolean
+            coins_won:
+              nullable: true
+              type: integer
+              minimum: 0
+              description: Shown when `combat_finished`; actual coins applied on `claim` (future).
 
     ErrorBody:
       type: object

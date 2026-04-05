@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace Game\Combat;
 
 /**
- * First TZ combat request: random first striker, optional AI opening move when opponent goes first.
+ * First TZ combat request: random first striker, optional AI opening when opponent goes first.
  */
 final class CombatOpening
 {
-    public const STATE_VERSION = 1;
+    public const STATE_VERSION = 2;
 
     /**
      * @param array{skill_1: int, skill_2: int, skill_3: int} $initiatorSkills
@@ -41,10 +41,10 @@ final class CombatOpening
             'first_striker' => $first,
             'last_initiator_skill' => null,
             'last_opponent_skill' => null,
-            'moves_this_round' => 0,
+            'completed_strikes' => 0,
+            'next_move_sequence' => 1,
             'finished' => false,
             'winner_side' => null,
-            'next_actor' => $first,
         ];
 
         $opponentFirstMove = null;
@@ -52,21 +52,21 @@ final class CombatOpening
         $winnerCharacterId = null;
 
         if ($first === 'opponent') {
-            $skill = random_int(1, 3);
+            $skill = CombatAi::chooseSkill(null, null);
             $atk = CombatMath::skillValue($opponentSkills, $skill);
             $def = CombatMath::skillValue($initiatorSkills, $skill);
             $points = CombatMath::strikePoints($atk, $def);
             $state['score_opponent'] = $points;
             $state['last_opponent_skill'] = $skill;
-            $state['moves_this_round'] = 1;
-            $state['next_actor'] = 'initiator';
+            $state['completed_strikes'] = 1;
+            $state['next_move_sequence'] = 2;
             $opponentFirstMove = ['skill' => $skill, 'points' => $points];
 
             if ($points > 100) {
                 $finished = true;
                 $winnerCharacterId = $opponentCharacterId;
-                $state['finished'] = true;
-                $state['winner_side'] = 'opponent';
+                $resolved = CombatResolution::finishWithWinner($state, 'opponent', $opponentCharacterId);
+                $state = $resolved['state'];
             }
         }
 

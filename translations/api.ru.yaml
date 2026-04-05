@@ -1,5 +1,5 @@
 # Russian API and validation messages (Accept-Language: ru or APP_LANG=ru)
-api.bootstrap.message: 'Фаза 1.8: POST JSON `command` — `register`, `login`, `me` (Bearer), `find_opponents`, `start_combat`, `ping`, `health`, session_*. Далее: удар / приз.'
+api.bootstrap.message: 'Фаза 1.9: POST JSON `command` — `register`, `login`, `me` (Bearer), `find_opponents`, `start_combat`, `combat_attack`, `ping`, `health`, session_*. Далее: получение приза.'
 api.error.method_not_allowed: 'Используйте POST с телом application/json или application/x-www-form-urlencoded.'
 api.error.invalid_json: 'Тело запроса должно быть корректным JSON или полями form-urlencoded.'
 api.error.missing_command: 'Поле `command` обязательно.'
@@ -15,6 +15,12 @@ api.error.no_opponents_available: 'Нет других активных игро
 api.error.cannot_fight_self: 'Нельзя начать бой против самого себя.'
 api.error.opponent_not_found: 'Соперник не найден или неактивен.'
 api.error.opponent_level_mismatch: 'У соперника должен быть тот же уровень персонажа, что и у вас.'
+api.error.combat_not_found: 'Бой не найден.'
+api.error.combat_finished: 'Этот бой уже завершён.'
+api.error.combat_state_invalid: 'Данные боя повреждены.'
+api.error.not_your_combat: 'Вы не инициатор этого боя.'
+api.error.not_your_turn: 'Сейчас не ваш ход.'
+api.error.illegal_skill: 'Этот скилл недоступен (нельзя повторить свой или скопировать удар соперника).'
 
 api.command.required: 'Поле `command` обязательно.'
 api.command.invalid: 'Неизвестная команда.'
@@ -30,3 +36,8 @@ api.player_id.invalid_uuid: 'Поле `player_id` должно быть корр
 api.opponent_player_id.must_be_string: 'Поле `opponent_player_id` должно быть строкой (UUID из register).'
 api.opponent_player_id.empty: 'Поле `opponent_player_id` не может быть пустым.'
 api.opponent_player_id.invalid_uuid: 'Поле `opponent_player_id` должно быть корректным UUID v4.'
+
+api.combat_id.must_be_string: 'Поле `combat_id` должно быть строкой (UUID из start_combat).'
+api.combat_id.invalid_uuid: 'Поле `combat_id` должно быть корректным UUID v4.'
+api.combat_skill.must_be_int: 'Поле `skill` должно быть целым числом 1..3.'
+api.combat_skill.range: 'Поле `skill` должно быть 1, 2 или 3.'

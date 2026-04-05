@@ -114,7 +114,7 @@ Phase 1.1+ — JSON command API (incremental)
 --------------------------------------------
 Built in small steps so you can review each slice.
 
-**Current marker:** `Bootstrap::PHASE` = **1.8** (`start_combat` + earlier commands; next: attack / claim prize).
+**Current marker:** `Bootstrap::PHASE` = **1.9** (`combat_attack` + earlier commands; next: claim prize).
 
 ### Part 1 (API base)
 

@@ -77,9 +77,24 @@ Files: **`StartCombatHandler`**, **`CombatOpening`**, **`CombatMath`**, **`Comba
 
 ---
 
-## Remaining spec (§5–6, combat moves + prize, levelling)
+## Combat attack (spec §5) — implemented
 
-Attack, claim prize, levelling — not implemented. See `docs/assignment-original-spec.md`.
+| Requirement | Implementation |
+|-------------|----------------|
+| Command | **`combat_attack`**: **`combat_id`** (UUID from `start_combat`), **`skill`** `1`–`3`. |
+| Who may play | Only **`state.initiator_user_id`**. Otherwise **403** `not_your_combat`. |
+| Turn order | **`CombatTurnOrder`** + **`completed_strikes`**; **409** `not_your_turn` if initiator strikes out of order. |
+| Rules | **`CombatStrikeRules`** (no repeat own; no copy opponent’s last). **400** `illegal_skill`. |
+| Response | **`your_move`**, optional **`opponent_move`** (AI when combat continues), scores, **`combat_finished`**, **`coins_won`** when finished (actual balance on **claim**, §6). |
+| Persistence | Transaction + **`findByPublicIdForUpdate`**; **`appendMove`** per strike; finish updates **`status`**, **`winner_character_id`**, **`finished_at`**. |
+
+Files: **`CombatAttackHandler`**, **`CombatAttackService`**, **`CombatAttackInput`**, **`CombatAi`**, **`CombatResolution`**.
+
+---
+
+## Remaining spec (§6–7, prize claim, levelling)
+
+Prize **claim**, levelling — not implemented. See `docs/assignment-original-spec.md`.
 
 ---
 

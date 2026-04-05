@@ -6,6 +6,7 @@ namespace Game\Tests;
 
 use Dotenv\Dotenv;
 use Game\Api\Handler\FindOpponentsHandler;
+use Game\Api\Handler\CombatAttackHandler;
 use Game\Api\Handler\StartCombatHandler;
 use Game\Api\Handler\LoginHandler;
 use Game\Api\Handler\MeHandler;
@@ -222,6 +223,33 @@ final class LoginMysqlIntegrationTest extends TestCase
                 $this->assertContains($combat['opponent_first_move']['skill'], [1, 2, 3]);
             } else {
                 $this->assertNull($combat['opponent_first_move']);
+            }
+
+            $firstSkill = 1;
+            if (isset($combat['opponent_first_move']['skill'])) {
+                $blocked = (int) $combat['opponent_first_move']['skill'];
+                $firstSkill = $blocked === 1 ? 2 : 1;
+            }
+
+            $attack = new CombatAttackHandler();
+            $hit = $attack->handle(
+                new ApiContext(
+                    new IncomingRequest('POST', '/', [], '{}'),
+                    [
+                        'command' => 'combat_attack',
+                        'combat_id' => $combat['combat_id'],
+                        'skill' => $firstSkill,
+                    ],
+                    $session,
+                ),
+                $db,
+            );
+            $this->assertSame($firstSkill, $hit['your_move']['skill']);
+            $this->assertArrayHasKey('points', $hit['your_move']);
+            $this->assertIsInt($hit['your_move']['points']);
+            if (!$hit['combat_finished']) {
+                $this->assertIsArray($hit['opponent_move']);
+                $this->assertContains($hit['opponent_move']['skill'], [1, 2, 3]);
             }
 
             $rowStmt = $pdo->prepare('SELECT id, status FROM combats WHERE public_id = ?');
