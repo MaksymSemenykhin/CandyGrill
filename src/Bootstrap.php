@@ -9,6 +9,6 @@ namespace Game;
  */
 final class Bootstrap
 {
-    /** 2.0 = `claim` + combat flow; earlier: `me`, `start_combat`, `combat_attack`. */
-    public const PHASE = '2.0';
+    /** 2.1 = levelling on `claim`; 2.0 = `claim` + combat flow. */
+    public const PHASE = '2.1';
 }

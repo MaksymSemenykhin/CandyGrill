@@ -98,16 +98,25 @@ Files: **`CombatAttackHandler`**, **`CombatAttackService`**, **`CombatAttackInpu
 |-------------|----------------|
 | Command | **`claim`**: **`combat_id`** (UUID). Session user = combat **initiator** (`state.initiator_user_id`). |
 | When | Combat **`status`** = `finished`, **`results_applied_at`** still `null`. **409** `combat_not_finished` / **`prize_already_claimed`**. |
-| Effect | Initiator **`characters`**: `fights += 1`, `fights_won += 1` if won, `coins +=` {@see CombatResolution::WINNER_COINS} if won else `0`. Then **`markResultsApplied`**. |
-| Response | **`won`**, **`coins_received`**, **`changes`** (deltas incl. `level: 0` until levelling exists), **`character`** snapshot (same fields as **`me`**). |
+| Effect | Initiator **`characters`**: `fights += 1`, `fights_won += 1` if won, `coins +=` {@see CombatResolution::WINNER_COINS} if won else `0`, **`level`** recalculated from `fights_won` ({@see LevelingRules}). Then **`markResultsApplied`**. |
+| Response | **`won`**, **`coins_received`**, **`changes`** (deltas; **`changes.level`** is this claim’s level step, usually 0 or 1), **`character`** snapshot (same fields as **`me`**). |
 
-Files: **`ClaimHandler`**, **`CombatClaimService`**, **`ClaimCombatInput`**, **`CharacterRepository::applyInitiatorCombatClaim`**.
+Files: **`ClaimHandler`**, **`CombatClaimService`**, **`ClaimCombatInput`**, **`CharacterRepository::applyInitiatorCombatClaim`**, **`LevelingRules`**.
 
 ---
 
-## Remaining spec (§7, levelling)
+## Levelling (TZ *Levelling up*)
 
-Levelling / skill upgrades — not implemented. See `docs/assignment-original-spec.md`.
+| Rule | Implementation |
+|------|----------------|
+| Level from wins | `level = max(1, 1 + floor(fights_won / N))` with **`N = {@see LevelingRules::WINS_PER_LEVEL}`** (3). |
+| When applied | Same `UPDATE` as claim prize (`applyInitiatorCombatClaim`), so level tracks wins after each **`claim`**. |
+
+---
+
+## Remaining spec (future)
+
+Skill upgrades for coins (*in the future* in `docs/assignment-original-spec.md`) — not implemented.
 
 ---
 

@@ -114,7 +114,7 @@ Phase 1.1+ — JSON command API (incremental)
 --------------------------------------------
 Built in small steps so you can review each slice.
 
-**Current marker:** `Bootstrap::PHASE` = **2.0** (`claim` + full combat flow; next: levelling / skill upgrades per TZ).
+**Current marker:** `Bootstrap::PHASE` = **2.1** (levelling on claim; full combat flow + `claim`). Skill-for-coins left for a future iteration per TZ wording.
 
 ### Part 1 (API base)
 

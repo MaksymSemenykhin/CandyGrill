@@ -1,5 +1,5 @@
 # API response and validation messages — English (default / fallback)
-api.bootstrap.message: 'Phase 2.0: POST JSON `command` — `register`, `login`, `me` (Bearer), `find_opponents`, `start_combat`, `combat_attack`, `claim`, `ping`, `health`, session_*. Next: levelling.'
+api.bootstrap.message: 'Phase 2.1: POST JSON `command` — `register`, `login`, `me` (Bearer), `find_opponents`, `start_combat`, `combat_attack`, `claim`, `ping`, `health`, session_*. Level rises every 3 wins on `claim`.'
 api.error.method_not_allowed: 'Use POST with application/json or application/x-www-form-urlencoded.'
 api.error.invalid_json: 'Body must be valid JSON or form-urlencoded fields.'
 api.error.missing_command: 'Field `command` is required.'

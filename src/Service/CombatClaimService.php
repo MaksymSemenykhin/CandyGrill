@@ -43,6 +43,11 @@ final class CombatClaimService implements CombatClaimServiceInterface
             $won = ($state['winner_side'] ?? null) === 'initiator';
             $winInc = $won ? 1 : 0;
 
+            $before = $db->characters()->findGameProfileByUserId($initiatorUserId);
+            if ($before === null) {
+                throw new ApiHttpException(404, 'character_not_found', 'api.error.character_not_found');
+            }
+
             $db->characters()->applyInitiatorCombatClaim($initiatorUserId, $winInc, $coinsDelta);
 
             $marked = $db->combats()->markResultsApplied((int) $row['id']);
@@ -70,7 +75,7 @@ final class CombatClaimService implements CombatClaimServiceInterface
                     'fights' => 1,
                     'fights_won' => $winInc,
                     'coins' => $coinsDelta,
-                    'level' => 0,
+                    'level' => $after['level'] - $before['level'],
                 ],
                 'character' => [
                     'player_id' => $playerId,

@@ -11,6 +11,8 @@ use Game\Database\DatabaseConnection;
 interface CombatClaimServiceInterface
 {
     /**
+     * `changes.level` is the level delta from this claim (often 0; 1 when `fights_won` crosses a {@see \Game\Combat\LevelingRules} threshold).
+     *
      * @return array{
      *   combat_id: string,
      *   won: bool,

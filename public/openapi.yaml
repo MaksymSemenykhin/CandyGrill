@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: CandyGrill
-  version: 2.0.0
+  version: 2.1.0
   description: |
     **Session:** after `login`, click **Authorize** and paste the 64 hex chars from `data.session_id` (Swagger adds `Authorization: Bearer …`).
 
@@ -634,7 +634,7 @@ components:
                 level:
                   type: integer
                   minimum: 0
-                  description: Level delta (0 until levelling is implemented).
+                  description: Level increase from this `claim` (0 or more; default rules +1 every 3 lifetime wins).
             character:
               type: object
               required:

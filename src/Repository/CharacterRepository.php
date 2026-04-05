@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Game\Repository;
 
+use Game\Combat\LevelingRules;
 use PDO;
 use PDOException;
 
@@ -220,17 +221,23 @@ class CharacterRepository
         if ($coinsDelta < 0) {
             throw new \InvalidArgumentException('coinsDelta must be non-negative.');
         }
+        $wpl = LevelingRules::WINS_PER_LEVEL;
         $stmt = $this->pdo->prepare(
             'UPDATE characters
              SET fights = fights + 1,
                  fights_won = fights_won + :winc,
-                 coins = coins + :coins
+                 coins = coins + :coins,
+                 level = GREATEST(1, 1 + FLOOR(fights_won / :wpl))
              WHERE user_id = :uid',
         );
         $stmt->execute([
             'winc' => $fightsWonIncrement,
             'coins' => $coinsDelta,
+            'wpl' => $wpl,
             'uid' => $userId,
         ]);
+        if ($stmt->rowCount() !== 1) {
+            throw new \RuntimeException('applyInitiatorCombatClaim affected no character row.');
+        }
     }
 }
