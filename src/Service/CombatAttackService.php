@@ -144,6 +144,8 @@ final class CombatAttackService implements CombatAttackServiceInterface
 
     /**
      * @param array<string, mixed> $state
+     * @param array{skill_1: int, skill_2: int, skill_3: int} $initiatorSkills
+     * @param array{skill_1: int, skill_2: int, skill_3: int} $opponentSkills
      *
      * @return array{0: array<string, mixed>, 1: int}
      */

@@ -27,6 +27,9 @@ final class CombatInitiatorAccess
         return $row;
     }
 
+    /**
+     * @param array<string, mixed> $row
+     */
     public static function assertOpenForAttack(array $row): void
     {
         if (($row['status'] ?? '') !== CombatRecordStatus::ACTIVE) {
@@ -37,6 +40,9 @@ final class CombatInitiatorAccess
         }
     }
 
+    /**
+     * @param array<string, mixed> $row
+     */
     public static function assertReadyForClaim(array $row): void
     {
         if ($row['results_applied_at'] !== null) {
