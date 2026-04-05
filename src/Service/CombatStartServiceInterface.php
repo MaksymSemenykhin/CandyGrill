@@ -18,6 +18,7 @@ interface CombatStartServiceInterface
      *   your_score: int,
      *   opponent_score: int,
      *   combat_finished: bool,
+     *   coins_won: int|null,
      *   opponent_first_move: null|array{skill: int, points: int}
      * }
      *

@@ -219,6 +219,8 @@ final class LoginMysqlIntegrationTest extends TestCase
             $this->assertContains($combat['first_striker'], ['you', 'opponent']);
             $this->assertArrayHasKey('skill_1', $combat['opponent']);
             $this->assertFalse($combat['combat_finished']);
+            $this->assertArrayHasKey('coins_won', $combat);
+            $this->assertNull($combat['coins_won']);
             if ($combat['first_striker'] === 'opponent') {
                 $this->assertIsArray($combat['opponent_first_move']);
                 $this->assertContains($combat['opponent_first_move']['skill'], [1, 2, 3]);

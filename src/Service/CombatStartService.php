@@ -6,6 +6,7 @@ namespace Game\Service;
 
 use Game\Api\ApiHttpException;
 use Game\Combat\CombatOpening;
+use Game\Combat\CombatResolution;
 use Game\Database\DatabaseConnection;
 use Game\Repository\UserRepository;
 
@@ -165,6 +166,9 @@ final class CombatStartService implements CombatStartServiceInterface
             'your_score' => $state['score_initiator'],
             'opponent_score' => $state['score_opponent'],
             'combat_finished' => $opening['finished'],
+            'coins_won' => $opening['finished']
+                ? CombatResolution::initiatorCoinsWhenFinished($state)
+                : null,
             'opponent_first_move' => $opening['opponent_first_move'],
         ];
     }

@@ -68,6 +68,7 @@ Files: **`FindOpponentsHandler`**, **`CharacterRepository`** (level lookup and o
 | Response — **opponent skill values** | nested **`opponent`**: **`player_id`**, **`skill_1`**, **`skill_2`**, **`skill_3`**. |
 | **First attacker random** | Field **`first_striker**: `you` \| `opponent` (`you` = initiator / session holder). |
 | Opponent acts first | **`opponent_first_move`**: `{ skill: 1\|2\|3, points }` (AI); otherwise `null`. |
+| Combat already over on start (e.g. instant KO) | **`combat_finished`** true and **`coins_won`** — promised initiator reward (TZ: same as request #5); balance still updates only on **`claim`**. |
 | Persist session | **`combat_id`** (UUID) in **`combats`**; optional row in **`combat_moves`** for AI opening; **`state`** JSON for the combat engine. Stats not applied until prize claim (§6). |
 | Same **level** | **400** `opponent_level_mismatch`. |
 | Self-opponent | **400** `cannot_fight_self`. |

@@ -485,6 +485,7 @@ components:
             - your_score
             - opponent_score
             - combat_finished
+            - coins_won
           additionalProperties: false
           properties:
             combat_id:
@@ -523,6 +524,11 @@ components:
               minimum: 0
             combat_finished:
               type: boolean
+            coins_won:
+              nullable: true
+              type: integer
+              minimum: 0
+              description: Set when `combat_finished` (TZ request #4); banked on `claim`.
             opponent_first_move:
               type: object
               nullable: true
