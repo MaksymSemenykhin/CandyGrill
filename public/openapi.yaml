@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
   title: CandyGrill
-  version: 2.1.0
+  version: 2.2.0
   description: |
     **Session:** after `login`, click **Authorize** and paste the 64 hex chars from `data.session_id` (Swagger adds `Authorization: Bearer …`).
 
-    For `register` / `login`, call the API without Authorize (or click Logout). Flow: `start_combat` → `combat_attack` (until finished) → `claim` (initiator).
+    For `register` / `login`, call the API without Authorize (or click Logout). Flow: `start_combat` → `combat_attack` (until finished) → `claim` (initiator). Use `combat_state` to refresh scores / turn (initiator only).
 
 # Relative URL: Swagger UI and clients use the same host you opened in the browser (VPS IP, localhost, etc.).
 servers:
@@ -24,7 +24,7 @@ paths:
       summary: POST /
       operationId: postCommand
       description: >-
-        For session commands (`me`, `find_opponents`, `start_combat`, `combat_attack`, `claim`, …) click **Authorize** and paste `session_id` from `login` (64 hex, no `Bearer` prefix).
+        For session commands (`me`, `find_opponents`, `start_combat`, `combat_state`, `combat_attack`, `claim`, …) click **Authorize** and paste `session_id` from `login` (64 hex, no `Bearer` prefix).
       parameters:
         - $ref: '#/components/parameters/LangQuery'
       requestBody:
@@ -38,6 +38,7 @@ paths:
                 - $ref: '#/components/schemas/MeRequest'
                 - $ref: '#/components/schemas/FindOpponentsRequest'
                 - $ref: '#/components/schemas/StartCombatRequest'
+                - $ref: '#/components/schemas/CombatStateRequest'
                 - $ref: '#/components/schemas/CombatAttackRequest'
                 - $ref: '#/components/schemas/ClaimRequest'
               discriminator:
@@ -48,6 +49,7 @@ paths:
                   me: '#/components/schemas/MeRequest'
                   find_opponents: '#/components/schemas/FindOpponentsRequest'
                   start_combat: '#/components/schemas/StartCombatRequest'
+                  combat_state: '#/components/schemas/CombatStateRequest'
                   combat_attack: '#/components/schemas/CombatAttackRequest'
                   claim: '#/components/schemas/ClaimRequest'
             examples:
@@ -74,6 +76,11 @@ paths:
                 value:
                   command: start_combat
                   opponent_player_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+              combat_state:
+                summary: 'Template: combat_state (needs Bearer)'
+                value:
+                  command: combat_state
+                  combat_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
               combat_attack:
                 summary: 'Template: combat_attack (needs Bearer)'
                 value:
@@ -94,6 +101,7 @@ paths:
                 - $ref: '#/components/schemas/MeRequest'
                 - $ref: '#/components/schemas/FindOpponentsRequest'
                 - $ref: '#/components/schemas/StartCombatRequest'
+                - $ref: '#/components/schemas/CombatStateRequest'
                 - $ref: '#/components/schemas/CombatAttackRequest'
                 - $ref: '#/components/schemas/ClaimRequest'
               discriminator:
@@ -104,6 +112,7 @@ paths:
                   me: '#/components/schemas/MeRequest'
                   find_opponents: '#/components/schemas/FindOpponentsRequest'
                   start_combat: '#/components/schemas/StartCombatRequest'
+                  combat_state: '#/components/schemas/CombatStateRequest'
                   combat_attack: '#/components/schemas/CombatAttackRequest'
                   claim: '#/components/schemas/ClaimRequest'
             examples:
@@ -130,6 +139,11 @@ paths:
                 value:
                   command: start_combat
                   opponent_player_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+              combat_state:
+                summary: 'Template: combat_state (form)'
+                value:
+                  command: combat_state
+                  combat_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
               combat_attack:
                 summary: 'Template: combat_attack (form)'
                 value:
@@ -154,6 +168,7 @@ paths:
                   - $ref: '#/components/schemas/MeOk'
                   - $ref: '#/components/schemas/FindOpponentsOk'
                   - $ref: '#/components/schemas/StartCombatOk'
+                  - $ref: '#/components/schemas/CombatStateOk'
                   - $ref: '#/components/schemas/CombatAttackOk'
                   - $ref: '#/components/schemas/ClaimOk'
 
@@ -292,6 +307,25 @@ components:
           type: string
           format: uuid
           description: Public id of the opponent (from find_opponents or register).
+        lang:
+          type: string
+          enum: [en, ru]
+        session_id:
+          type: string
+          description: Optional; otherwise use Authorization Bearer header.
+
+    CombatStateRequest:
+      type: object
+      required: [command, combat_id]
+      additionalProperties: false
+      properties:
+        command:
+          type: string
+          enum: [combat_state]
+        combat_id:
+          type: string
+          format: uuid
+          description: Combat from `start_combat` (initiator only).
         lang:
           type: string
           enum: [en, ru]
@@ -541,6 +575,76 @@ components:
                 points:
                   type: integer
                   minimum: 0
+
+    CombatStateOk:
+      type: object
+      required: [ok, data, lang]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        lang:
+          type: string
+          enum: [en, ru]
+        data:
+          type: object
+          required:
+            - combat_id
+            - opponent
+            - first_striker
+            - your_score
+            - opponent_score
+            - combat_finished
+            - coins_won
+            - your_turn
+            - results_claimed
+          additionalProperties: false
+          properties:
+            combat_id:
+              type: string
+              format: uuid
+            opponent:
+              type: object
+              required: [player_id, skill_1, skill_2, skill_3]
+              additionalProperties: false
+              properties:
+                player_id:
+                  type: string
+                  format: uuid
+                skill_1:
+                  type: integer
+                  minimum: 0
+                  maximum: 50
+                skill_2:
+                  type: integer
+                  minimum: 0
+                  maximum: 50
+                skill_3:
+                  type: integer
+                  minimum: 0
+                  maximum: 50
+            first_striker:
+              type: string
+              enum: [you, opponent]
+            your_score:
+              type: integer
+              minimum: 0
+            opponent_score:
+              type: integer
+              minimum: 0
+            combat_finished:
+              type: boolean
+            coins_won:
+              nullable: true
+              type: integer
+              minimum: 0
+              description: Set when `combat_finished`; banked on `claim`.
+            your_turn:
+              type: boolean
+              description: Whether the initiator may call `combat_attack` next (false when finished, claimed, or opponent/AI turn).
+            results_claimed:
+              type: boolean
+              description: True after a successful `claim` for this combat.
 
     CombatAttackOk:
       type: object

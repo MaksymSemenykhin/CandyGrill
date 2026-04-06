@@ -32,7 +32,7 @@ final class OpenApiSpecTest extends TestCase
     {
         $this->assertSame('3.0.3', $this->spec['openapi'] ?? null);
         $this->assertSame('CandyGrill', $this->spec['info']['title'] ?? null);
-        $this->assertSame('2.1.0', $this->spec['info']['version'] ?? null);
+        $this->assertSame('2.2.0', $this->spec['info']['version'] ?? null);
 
         $servers = $this->spec['servers'] ?? null;
         $this->assertIsArray($servers);
