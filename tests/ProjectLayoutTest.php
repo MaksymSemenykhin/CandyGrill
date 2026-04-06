@@ -45,6 +45,7 @@ final class ProjectLayoutTest extends TestCase
     {
         $this->assertFileExists($this->root . '/docs/assignment-original-spec.md');
         $this->assertFileExists($this->root . '/readme.txt');
+        $this->assertFileExists($this->root . '/README.md');
     }
 
     public function testPhinxConfigAndEntrypointsExist(): void
