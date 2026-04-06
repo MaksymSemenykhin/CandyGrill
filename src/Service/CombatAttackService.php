@@ -21,9 +21,7 @@ final class CombatAttackService implements CombatAttackServiceInterface
 {
     public function attack(DatabaseConnection $db, int $initiatorUserId, string $combatId, int $skill): array
     {
-        $pdo = $db->pdo();
-        $pdo->beginTransaction();
-        try {
+        return $db->transaction(function () use ($db, $initiatorUserId, $combatId, $skill): array {
             $row = CombatInitiatorAccess::requireCombatRow($db->combats()->findByPublicIdForUpdate($combatId));
             CombatInitiatorAccess::assertOpenForAttack($row);
             $state = CombatInitiatorAccess::stateForCombatEngine($row);
@@ -75,7 +73,6 @@ final class CombatAttackService implements CombatAttackServiceInterface
             if ($maybe !== null) {
                 $state = $maybe['state'];
                 $this->saveCombatEnd($db, (int) $row['id'], $state, $maybe['winner_character_id']);
-                $pdo->commit();
 
                 return $this->attackResponse($skill, $yourPoints, null, $state);
             }
@@ -85,7 +82,6 @@ final class CombatAttackService implements CombatAttackServiceInterface
                 $fin = CombatResolution::finishAfterSixStrikes($state, $initiatorCharId, $opponentCharId);
                 $state = $fin['state'];
                 $this->saveCombatEnd($db, (int) $row['id'], $state, $fin['winner_character_id']);
-                $pdo->commit();
 
                 return $this->attackResponse($skill, $yourPoints, null, $state);
             }
@@ -116,7 +112,6 @@ final class CombatAttackService implements CombatAttackServiceInterface
             if ($maybe2 !== null) {
                 $state = $maybe2['state'];
                 $this->saveCombatEnd($db, (int) $row['id'], $state, $maybe2['winner_character_id']);
-                $pdo->commit();
 
                 return $this->attackResponse($skill, $yourPoints, $opponentPayload, $state);
             }
@@ -125,21 +120,14 @@ final class CombatAttackService implements CombatAttackServiceInterface
                 $fin2 = CombatResolution::finishAfterSixStrikes($state, $initiatorCharId, $opponentCharId);
                 $state = $fin2['state'];
                 $this->saveCombatEnd($db, (int) $row['id'], $state, $fin2['winner_character_id']);
-                $pdo->commit();
 
                 return $this->attackResponse($skill, $yourPoints, $opponentPayload, $state);
             }
 
             $db->combats()->updateProgress((int) $row['id'], CombatRecordStatus::ACTIVE, $state, null, null);
-            $pdo->commit();
 
             return $this->attackResponse($skill, $yourPoints, $opponentPayload, $state);
-        } catch (\Throwable $e) {
-            if ($pdo->inTransaction()) {
-                $pdo->rollBack();
-            }
-            throw $e;
-        }
+        });
     }
 
     /**

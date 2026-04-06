@@ -181,6 +181,27 @@ final class Kernel
             ]);
 
             return;
+        } catch (\Throwable $e) {
+            \error_log(\sprintf(
+                'Game API %s: %s in %s:%d',
+                $e::class,
+                $e->getMessage(),
+                $e->getFile(),
+                $e->getLine(),
+            ));
+            $error = [
+                'code' => ApiError::SERVER_ERROR,
+                'message' => $this->i18n->trans('api.error.server_error'),
+            ];
+            if (self::debugResponsesEnabled()) {
+                $error['detail'] = $e->getMessage();
+            }
+            $this->sendJson(500, [
+                'ok' => false,
+                'error' => $error,
+            ]);
+
+            return;
         }
 
         $this->sendJson(200, ['ok' => true, 'data' => $data]);

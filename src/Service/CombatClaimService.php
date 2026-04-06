@@ -35,7 +35,7 @@ final class CombatClaimService implements CombatClaimServiceInterface
             $before = $profiles->getMe($db, $initiatorUserId);
 
             $coinsDelta = CombatResolution::initiatorCoinsWhenFinished($state);
-            $won = ($state['winner_side'] ?? null) === CombatSide::INITIATOR;
+            $won = ($state[CombatStateKey::WINNER_SIDE] ?? null) === CombatSide::INITIATOR;
             $winInc = $won ? 1 : 0;
 
             $db->characters()->applyInitiatorCombatClaim($initiatorUserId, $winInc, $coinsDelta);

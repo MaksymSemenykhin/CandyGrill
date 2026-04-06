@@ -31,6 +31,7 @@ final class ApiError
     public const UNKNOWN_COMMAND = 'unknown_command';
     public const DATABASE_NOT_CONFIGURED = 'database_not_configured';
     public const DATABASE_ERROR = 'database_error';
+    public const SERVER_ERROR = 'server_error';
     public const INVALID_REQUEST = 'invalid_request';
     public const INVALID_COMBAT_ID = 'invalid_combat_id';
     public const INVALID_SKILL = 'invalid_skill';

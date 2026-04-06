@@ -50,6 +50,9 @@ class DatabaseConnection
     }
 
     /**
+     * Runs {@code $callback} inside a single PDO transaction (commit on success, rollback on any throwable).
+     * Prefer this over raw {@see PDO::beginTransaction()} for multi-step writes.
+     *
      * @template T
      *
      * @param callable(self): T $callback

@@ -10,7 +10,6 @@ use Game\Database\DatabaseConnection;
 use Game\Repository\ActivePlayerLookup;
 use Game\Session\SessionService;
 use Random\RandomException;
-use Throwable;
 
 final class PlayerService implements PlayerServiceInterface
 {
@@ -26,14 +25,12 @@ final class PlayerService implements PlayerServiceInterface
     /**
      * @return array{player_id: string}
      *
-     * @throws Throwable
+     * @throws RandomException
      */
     public function register(DatabaseConnection $db, string $characterName): array
     {
-        [$skill1, $skill2, $skill3] = $this->rollTzSkills();
-
-        $db->pdo()->beginTransaction();
-        try {
+        return $db->transaction(function () use ($db, $characterName): array {
+            [$skill1, $skill2, $skill3] = $this->rollTzSkills();
             $created = $db->users()->createAnonymousPlayer();
             $db->characters()->createForPlayer(
                 $created['internal_id'],
@@ -42,15 +39,11 @@ final class PlayerService implements PlayerServiceInterface
                 $skill2,
                 $skill3,
             );
-            $db->pdo()->commit();
-        } catch (Throwable $e) {
-            $db->pdo()->rollBack();
-            throw $e;
-        }
 
-        return [
-            'player_id' => $created['player_id'],
-        ];
+            return [
+                'player_id' => $created['player_id'],
+            ];
+        });
     }
 
     /**
