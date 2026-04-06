@@ -38,7 +38,7 @@ final class CombatOpening
             'score_opponent' => 0,
             'initiator_user_id' => $initiatorUserId,
             'opponent_user_id' => $opponentUserId,
-            'first_striker' => $first,
+            'first' => $first,
             'last_initiator_skill' => null,
             'last_opponent_skill' => null,
             'completed_strikes' => 0,

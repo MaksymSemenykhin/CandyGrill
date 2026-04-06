@@ -14,6 +14,10 @@ final class CombatStateNormalizer
      */
     public static function normalize(array $state): array
     {
+        if (!isset($state['first']) && isset($state['first_striker'])) {
+            $state['first'] = $state['first_striker'];
+            unset($state['first_striker']);
+        }
         if (isset($state['completed_strikes'], $state['next_move_sequence'])) {
             return $state;
         }
