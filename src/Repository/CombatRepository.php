@@ -169,6 +169,54 @@ class CombatRepository
     }
 
     /**
+     * Audit trail for a combat, oldest first.
+     *
+     * @return list<array{turn_number: int, actor_character_id: int, payload: array<string, mixed>}>
+     *
+     * @throws PDOException
+     */
+    public function findMovesByCombatInternalIdOrdered(int $combatId): array
+    {
+        if ($combatId < 1) {
+            return [];
+        }
+        $stmt = $this->pdo->prepare(
+            'SELECT turn_number, actor_character_id, payload
+             FROM combat_moves
+             WHERE combat_id = ?
+             ORDER BY turn_number ASC',
+        );
+        $stmt->execute([$combatId]);
+        /** @var list<array{turn_number: int, actor_character_id: int, payload: array<string, mixed>}> $out */
+        $out = [];
+        while (($row = $stmt->fetch(PDO::FETCH_ASSOC)) !== false) {
+            if (!\is_array($row) || !isset($row['turn_number'], $row['actor_character_id'], $row['payload'])) {
+                continue;
+            }
+            $rawPayload = $row['payload'];
+            $decoded = [];
+            if (\is_string($rawPayload) && $rawPayload !== '') {
+                try {
+                    /** @var mixed $d */
+                    $d = json_decode($rawPayload, true, 512, JSON_THROW_ON_ERROR);
+                    $decoded = \is_array($d) ? $d : [];
+                } catch (\JsonException) {
+                    $decoded = [];
+                }
+            } elseif (\is_array($rawPayload)) {
+                $decoded = $rawPayload;
+            }
+            $out[] = [
+                'turn_number' => (int) $row['turn_number'],
+                'actor_character_id' => (int) $row['actor_character_id'],
+                'payload' => $decoded,
+            ];
+        }
+
+        return $out;
+    }
+
+    /**
      * @param non-empty-string $whereAndRestSql trailing SQL after {@code WHERE} (e.g. {@code public_id = ? LIMIT 1}).
      * @param list<int|string> $bind
      *

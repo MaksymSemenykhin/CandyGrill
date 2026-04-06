@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
   title: CandyGrill
-  version: 2.2.0
+  version: 2.3.0
   description: |
     **Session:** after `login`, click **Authorize** and paste the 64 hex chars from `data.session_id` (Swagger adds `Authorization: Bearer …`).
 
-    For `register` / `login`, call the API without Authorize (or click Logout). Flow: `start_combat` → `combat_attack` (until finished) → `claim` (initiator). Use `combat_state` to refresh scores / turn (initiator only).
+    For `register` / `login`, call the API without Authorize (or click Logout). Flow: `start_combat` → `combat_attack` (until finished) → `claim` (initiator). Use `combat_state` / `combat_history` to refresh snapshot or move log (initiator only).
 
 # Relative URL: Swagger UI and clients use the same host you opened in the browser (VPS IP, localhost, etc.).
 servers:
@@ -24,7 +24,7 @@ paths:
       summary: POST /
       operationId: postCommand
       description: >-
-        For session commands (`me`, `find_opponents`, `start_combat`, `combat_state`, `combat_attack`, `claim`, …) click **Authorize** and paste `session_id` from `login` (64 hex, no `Bearer` prefix).
+        For session commands (`me`, `find_opponents`, `start_combat`, `combat_state`, `combat_history`, `combat_attack`, `claim`, …) click **Authorize** and paste `session_id` from `login` (64 hex, no `Bearer` prefix).
       parameters:
         - $ref: '#/components/parameters/LangQuery'
       requestBody:
@@ -39,6 +39,7 @@ paths:
                 - $ref: '#/components/schemas/FindOpponentsRequest'
                 - $ref: '#/components/schemas/StartCombatRequest'
                 - $ref: '#/components/schemas/CombatStateRequest'
+                - $ref: '#/components/schemas/CombatHistoryRequest'
                 - $ref: '#/components/schemas/CombatAttackRequest'
                 - $ref: '#/components/schemas/ClaimRequest'
               discriminator:
@@ -50,6 +51,7 @@ paths:
                   find_opponents: '#/components/schemas/FindOpponentsRequest'
                   start_combat: '#/components/schemas/StartCombatRequest'
                   combat_state: '#/components/schemas/CombatStateRequest'
+                  combat_history: '#/components/schemas/CombatHistoryRequest'
                   combat_attack: '#/components/schemas/CombatAttackRequest'
                   claim: '#/components/schemas/ClaimRequest'
             examples:
@@ -81,6 +83,11 @@ paths:
                 value:
                   command: combat_state
                   combat_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+              combat_history:
+                summary: 'Template: combat_history (needs Bearer)'
+                value:
+                  command: combat_history
+                  combat_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
               combat_attack:
                 summary: 'Template: combat_attack (needs Bearer)'
                 value:
@@ -102,6 +109,7 @@ paths:
                 - $ref: '#/components/schemas/FindOpponentsRequest'
                 - $ref: '#/components/schemas/StartCombatRequest'
                 - $ref: '#/components/schemas/CombatStateRequest'
+                - $ref: '#/components/schemas/CombatHistoryRequest'
                 - $ref: '#/components/schemas/CombatAttackRequest'
                 - $ref: '#/components/schemas/ClaimRequest'
               discriminator:
@@ -113,6 +121,7 @@ paths:
                   find_opponents: '#/components/schemas/FindOpponentsRequest'
                   start_combat: '#/components/schemas/StartCombatRequest'
                   combat_state: '#/components/schemas/CombatStateRequest'
+                  combat_history: '#/components/schemas/CombatHistoryRequest'
                   combat_attack: '#/components/schemas/CombatAttackRequest'
                   claim: '#/components/schemas/ClaimRequest'
             examples:
@@ -144,6 +153,11 @@ paths:
                 value:
                   command: combat_state
                   combat_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+              combat_history:
+                summary: 'Template: combat_history (form)'
+                value:
+                  command: combat_history
+                  combat_id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
               combat_attack:
                 summary: 'Template: combat_attack (form)'
                 value:
@@ -169,6 +183,7 @@ paths:
                   - $ref: '#/components/schemas/FindOpponentsOk'
                   - $ref: '#/components/schemas/StartCombatOk'
                   - $ref: '#/components/schemas/CombatStateOk'
+                  - $ref: '#/components/schemas/CombatHistoryOk'
                   - $ref: '#/components/schemas/CombatAttackOk'
                   - $ref: '#/components/schemas/ClaimOk'
 
@@ -322,6 +337,25 @@ components:
         command:
           type: string
           enum: [combat_state]
+        combat_id:
+          type: string
+          format: uuid
+          description: Combat from `start_combat` (initiator only).
+        lang:
+          type: string
+          enum: [en, ru]
+        session_id:
+          type: string
+          description: Optional; otherwise use Authorization Bearer header.
+
+    CombatHistoryRequest:
+      type: object
+      required: [command, combat_id]
+      additionalProperties: false
+      properties:
+        command:
+          type: string
+          enum: [combat_history]
         combat_id:
           type: string
           format: uuid
@@ -645,6 +679,50 @@ components:
             results_claimed:
               type: boolean
               description: True after a successful `claim` for this combat.
+
+    CombatHistoryOk:
+      type: object
+      required: [ok, data, lang]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        lang:
+          type: string
+          enum: [en, ru]
+        data:
+          type: object
+          required: [combat_id, moves]
+          additionalProperties: false
+          properties:
+            combat_id:
+              type: string
+              format: uuid
+            moves:
+              type: array
+              description: Ordered strikes from `combat_moves` (empty if no rows yet).
+              items:
+                type: object
+                required: [turn, side, skill, points]
+                additionalProperties: false
+                properties:
+                  turn:
+                    type: integer
+                    minimum: 1
+                    description: Matches stored `turn_number` / strike sequence.
+                  side:
+                    type: string
+                    enum: [initiator, opponent]
+                  skill:
+                    type: integer
+                    enum: [1, 2, 3]
+                  points:
+                    type: integer
+                    minimum: 0
+                  round:
+                    type: integer
+                    minimum: 1
+                    description: Present on the opening AI strike when opponent goes first.
 
     CombatAttackOk:
       type: object
