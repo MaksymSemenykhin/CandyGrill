@@ -47,7 +47,7 @@ sail.bat up -d
 
 On Git Bash / WSL / Linux, `./sail` is a thin wrapper around `docker compose`.
 
-The `app` container entrypoint (`docker/8.3/docker-entrypoint.sh`) runs `composer install` if needed and **`php bin/migrate.php`** (Phinx), so the schema is applied automatically on startup.
+The `app` container entrypoint (`docker/8.3/docker-entrypoint.sh`) runs `composer install` if needed and **`php bin/migrate.php`** (Phinx), so the MySQL schema is applied when the container starts. Manual runs and local setups are described in **Database migrations** below.
 
 ### 4. Using the API
 
@@ -72,12 +72,25 @@ docker compose logs -f app
 ./sail logs -f app
 ```
 
-Deploy updates: `git pull`, then if the Dockerfile changed:
+Deploy updates: `git pull`. If `database/migrations/` contains new files, run migrations again (restart the stack as below, or `composer migrate` if you run PHP outside Docker). Then, if the Dockerfile changed:
 
 ```bash
 ./sail build --no-cache app
 ./sail up -d
 ```
+
+## Database migrations
+
+Schema changes for **MySQL** are applied with **[Phinx](https://phinx.org/)**: PHP classes in `database/migrations/`, configuration in `phinx.php` (reads `DB_*` from `.env`). Phinx stores which revisions already ran in the **`phinxlog`** table, so running migrate twice is safe.
+
+**Command:** `composer migrate or bash ./sail composer migrate` (runs `php bin/migrate.php`).
+
+| Scenario | What to do |
+|----------|------------|
+| **Docker Compose** | Nothing extra on first boot: `docker/8.3/docker-entrypoint.sh` runs `composer migrate` when the `app` container starts. After you `git pull` new migrations, restart so it runs again: `./sail up -d` (or `docker compose up -d app`). |
+| **Local PHP + MySQL** | Create an empty database, set `DB_HOST`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`, `DB_PORT` in `.env`, then `composer install` and `composer migrate`. |
+
+If the API returns database errors about missing tables or columns, the usual fix is to run migrations against the same database your `.env` points to.
 
 ## Architecture notes
 
