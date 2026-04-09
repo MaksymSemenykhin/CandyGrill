@@ -11,7 +11,7 @@ if (
         || (isset($_SERVER['REDIRECT_HTTP_AUTHORIZATION']) && is_string($_SERVER['REDIRECT_HTTP_AUTHORIZATION']) && $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] !== '');
     if (!$hasServerAuth) {
         foreach (getallheaders() ?: [] as $name => $value) {
-            if (strcasecmp((string) $name, 'Authorization') !== 0 || !is_string($value)) {
+            if (strcasecmp((string)$name, 'Authorization') !== 0 || !is_string($value)) {
                 continue;
             }
             $value = trim($value);
@@ -32,7 +32,10 @@ require $root . '/vendor/autoload.php';
 
 try {
     Kernel::boot($root)->run();
-} catch (\JsonException) {
+} catch (\JsonException $e) {
     \header('Content-Type: application/json; charset=utf-8', true, 500);
-    echo '{"ok":false,"error":{"code":"server_error","message":"JSON encoding failed."}}';
+    echo '{"ok":false,"error":{"code":"json_error","message":"JSON encoding failed."}}';
+} catch (\Throwable $e) {
+    \header('Content-Type: application/json; charset=utf-8', true, 500);
+    echo '{"ok":false,"error":{"code":"server_error","message":"Internal server error."}}';
 }
